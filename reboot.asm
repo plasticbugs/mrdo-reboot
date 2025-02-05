@@ -1,13 +1,39 @@
-; DISASSEMBLY OF MR. DO! BY CAPTAIN COSMOS
-; 100 HUNDRED PERCENT ALL LINKS RESOLVED.
-; I SPENT A LOT OF TIME WORKING ON THIS AND IT WOULD SUCK 100% IF SOMEONE USED MY WORK TO MAKE MONEY.
-; THIS WAS DONE FOR EDUCATIONAL PURPOSES ONLY AND ALL CREDIT GOES TO ME AND ME ONLY.
-; STARTED NOVEMBER 7, 2023
-; COMPLETED ON NOVEMBER 10, 2023 (TECHNICALLY NOT COMPLETED...COMPLETED)  THERE CAN ALWAYS BE MORE DONE.
-; FOUND A POTENTIAL EASTER EGG THAT REPRESENTS AN EARLY PROTOTYPE SET OF SPRITE PATTERNS DEPICTING THE JAPANESE SNOWMAN.
-; MARKED AS MR_DO_UNUSED_PUSH_ANIM_01_PAT, MR_DO_UNUSED_PUSH_ANIM_02_PAT AND MR_DO_UNUSED_PUSH_ANIM_03_PAT
-; LET THE HISTORY BOOKS BE KNOWN ON 10 NOVEMBER 2023 CAPTAIN COZMOS, I DISCOVERED THIS AFTER 40 YEARS BEING HIDDEN WITHIN THE CODE...
+; BASED ON THE  ASM CODE DISASSEMBLY OF MR. DO! BY CAPTAIN COSMOS (November 10,2023)
+;
+; Pattern Table:    0000h-07FFh (256*8 bytes in screen 1)
+; Name Table:       1000h-12FFh - 256*3 tiles
+; Color Table:      1800h (32 bytes)
+; SAT:              1900h
+; SPT:              2000h (256*8 bytes)
 
+; Original VRAM tables
+; PT:       EQU $0000
+; PNT:      EQU $1000
+; CT:       EQU $1800
+; SAT:      EQU $1900
+; SPT:      EQU $2000
+;
+; VRAM areas used for data
+; 3400H     212 bytes for saving P1 game data
+; 3600H     212 bytes for saving P2 game data
+; 3800h     768 bytes for alternative PNT during pause
+; 3B00H     93 bytes for sound data
+
+; Screen 2 layout
+; Pattern Table:    0000h-17FFh (3*256*8 bytes in screen 2)
+; Name Table:       1800h-1AFFh (3*256 tiles)
+; SAT:              1B00h-1B7Fh (4*32 bytes)
+; Color Table:      2000h-27FFh (256*8 bytes - screen 2 mirrored)
+; SPT:              2800h-2FFFh (256*8 bytes)
+
+PT:                     EQU $0000
+PNT:                    EQU $1800
+CT:                     EQU $2000
+;SAT:                   EQU $1B00
+;SPT:                   EQU $2800
+
+SAT:                    EQU $1900
+SPT:                    EQU $2000
 
 ; BIOS DEFINITIONS **************************
 ASCII_TABLE:        EQU $006A
@@ -33,6 +59,12 @@ SOUND_INIT:         EQU $1FEE
 PLAY_IT:            EQU $1FF1
 SOUND_MAN:          EQU $1FF4
 RAND_GEN:           EQU $1FFD
+
+
+; VDP
+DATA_PORT:              EQU $BE
+CTRL_PORT:              EQU $BF
+
 
 COLECO_TITLE_ON:    EQU $55AA
 COLECO_TITLE_OFF:   EQU $AA55
@@ -70,74 +102,188 @@ BLUE_CHOMPER_SND_0B:   EQU $1C
 
 
 ; RAM DEFINITIONS ***************************
-SPRITE_ORDER_TABLE:  EQU $7000
-TIMER_DATA_BLOCK:    EQU $7014
+    ORG $7000,$73FF
 
-SOUND_BANK_01_RAM:   EQU $702B
-SOUND_BANK_02_RAM:   EQU $7035
-SOUND_BANK_03_RAM:   EQU $703F
-SOUND_BANK_04_RAM:   EQU $7049
-SOUND_BANK_05_RAM:   EQU $7053
-SOUND_BANK_06_RAM:   EQU $705D
-SOUND_BANK_07_RAM:   EQU $7067
-SOUND_BANK_08_RAM:   EQU $7071
-SOUND_BANK_09_RAM:   EQU $707B
+                        RB  16  ;EQU $7000  ; Free
+                        RB  4   ;EQU $7010  ; Free
+                        RB  12  ;EQU $7014  ; Free
+STATESTART:             RB  11  ;EQU $7020  ; OS Sound Buffer Start
+SOUND_BANK_01_RAM:      RB  10  ;EQU $702B
+SOUND_BANK_02_RAM:      RB  10  ;EQU $7035
+SOUND_BANK_03_RAM:      RB  10  ;EQU $703F
+SOUND_BANK_04_RAM:      RB  10  ;EQU $7049
+SOUND_BANK_05_RAM:      RB  10  ;EQU $7053
+SOUND_BANK_06_RAM:      RB  10  ;EQU $705D
+SOUND_BANK_07_RAM:      RB  10  ;EQU $7067
+SOUND_BANK_08_RAM:      RB  10  ;EQU $7071
+SOUND_BANK_09_RAM:      RB  11  ;EQU $707B
 
-CONTROLLER_BUFFER:   EQU $7086
-KEYBOARD_P1:         EQU $708C
-KEYBOARD_P2:         EQU $7091
-TIMER_TABLE:         EQU $709E
-SPRITE_NAME_TABLE:   EQU $70E9
+CONTROLLER_BUFFER:      RB   2  ;EQU $7086
+                        RB   4  ;EQU $7088 ?? some kind of struct used in SUB_94A9 for Player1
+KEYBOARD_P1:            RB   1  ;EQU $708C
 
-BADGUY_BHVR_CNT_RAM: EQU $7139 ; HOW MANY BYTES IN TABLE
-BADGUY_BEHAVIOR_RAM: EQU $713A ; BEHAVIOR TABLE. UP TO 28 ELEMENTS
-DIAMOND_RAM:         EQU $7273
-CURRENT_LEVEL_RAM:   EQU $7274
-LIVES_LEFT_P1_RAM:   EQU $7276
-LIVES_LEFT_P2_RAM:   EQU $7277
-SCORE_P1_RAM:        EQU $727D ;  $727D/7E  2 BYTES SCORING FOR PLAYER#1. THE LAST DIGIT IS A RED HERRING. I.E. 150 LOOKS LIKE 1500.  SCORE WRAPS AROUND AFTER $FFFF (65535)
-SCORE_P2_RAM:        EQU $727F ;  $727F/80  2 BYTES SCORING FOR PLAYER#2
+                        RB   4  ;EQU $708D ?? some kind of struct used in SUB_94A9 for Player2
+KEYBOARD_P2:            RB   1  ;EQU $7091
 
-WORK_BUFFER:         EQU $72EF
-DEFER_WRITES:        EQU $73C6
+TIMER_TABLE:            RB  87  ;EQU $7092  ; total 29x3=87 bytes avoid overflow in the SAT
 
-FNAME "MR. Do! v1.rom"
+SPRITE_NAME_TABLE:      RB  80  ;EQU $70E9  ; SAT (4*20)
+
+BADGUY_BHVR_CNT_RAM:    RB   1  ;EQU $7139 ; HOW MANY BYTES IN TABLE
+BADGUY_BEHAVIOR_RAM:    RB  80  ;EQU $713A ; BEHAVIOR TABLE. UP TO 80 ELEMENTS
+
+LEVELMAP:               RB 160  ;EQU $718A ; Level (16x10) and game state (52 bytes) total 212 byte saved in VRAM
+CURRAPPL:               RB   1  ;EQU $722A
+                        RB   1  ;EQU $722B ; free !
+APPLEDATA:              RB  25  ;EQU $722C ; Apple sprite data 5x5 bytes
+ENEMYINTERACT:          RB  20  ;EQU $7245 ; enemy interaction data
+ENEMYINTERACT2:         RB  20  ;EQU $7259 ; enemy interaction data
+SPRITEROTFLAG:          RB   1  ;EQU $726D
+GAMECONTROL:            RB   1  ;EQU $726E ; GAME CONTROL BYTE (All bits have a meaning!) B0->1/2 Players B5-> Pause/Game
+GAMETIMER:              RB   1  ;EQU $726F  ??
+                        RB   1  ;EQU $7270  ??
+SKILLLEVEL:             RB   1  ;EQU $7271 ; Skill Level 1-4
+GAMEFLAGSBONUSITEM:     RB   1  ;EQU $7272 ; SOME GAME FLAG ?
+DIAMOND_RAM:            RB   1  ;EQU $7273
+CURRENT_LEVEL_P1:       RB   1  ;EQU $7274
+CURRENT_LEVEL_P2:       RB   1  ;EQU $7275 
+LIVES_LEFT_P1_RAM:      RB   1  ;EQU $7276
+LIVES_LEFT_P2_RAM:      RB   1  ;EQU $7277
+ENEMY_NUM_P1:           RB   1  ;EQU $7278 Initialised at 7 by LOC_8573
+ENEMY_NUM_P2:           RB   1  ;EQU $7279 Initialised at 7 by LOC_8573
+                        RB   1  ;EQU $727A Counter used to spawn letter monster for P1
+                        RB   1  ;EQU $727B Counter used to spawn letter monster for P2
+SCOREFLAG:              RB   1  ;EQU $727C Tell which score to upate ($80 for P1, $40 for P2, 0 no update)
+
+SCORE_P1_RAM:           RB   2  ;EQU $727D 
+SCORE_P2_RAM:           RB   2  ;EQU $727F
+
+MRDO_DATA:              RB   1  ;EQU $7281 ;+0  ; Mr. Do's flags
+MRDO_DATA.unkn:         RB   1  ;EQU $7282 ;+1  ; Mr. Do's ?
+MRDO_DATA.Timer:        RB   1  ;EQU $7283 ;+2  ; Mr. Do's timer
+MRDO_DATA.Y:            RB   1  ;EQU $7284 ;+3
+MRDO_DATA.X:            RB   1  ;EQU $7285 ;+4
+MRDO_DATA.Frame:        RB   1  ;EQU $7286 ;+5
+                        RB   1  ;EQU $7287 ;+6
+                        RB   1  ;EQU $7288 ;+7
+                        RB   1  ;EQU $7289  ; ??
+                        RB   1  ;EQU $728A  ; ??
+BADGUYTIMER:            RB   1  ;EQU $728B  ;
+CURRBADGUY:             RB   1  ;EQU $728C  ; Current bad guy 0-6
+                        RB   1  ;EQU $728D
+ENEMY_DATA_ARRAY:       RB  42  ;EQU $728E  ; enemy data starts here = 7*6 bytes (7 enemies)
+LETTERMON_DATA_P1:      RB   1  ;EQU $72B8
+LETTERMON_DATA_P2:      RB   1  ;EQU $72B9
+LETTERMON_COUNTER:      RB   1  ;EQU $72BA  ; Counter for the position in the scorebar (only 3 bits, UPPER BITS ARE FLAGS)
+                        RB   1  ;EQU $72BB
+                        RB   1  ;EQU $72BC
+LETTERMON_FLAG:         RB   1  ;EQU $72BD  ; ram for letter monsters
+LETTERMON_X:            RB   1  ;EQU $72BE
+LETTERMON_Y:            RB   1  ;EQU $72BF
+LETTERMON_TIMER:        RB   1  ;EQU $72C0
+                        RB   1  ;EQU $72C1
+                        RB   1  ;EQU $72C2
+GAMEFLAGS:              RB   1  ;EQU $72C3  Game Flag B7 = chomper mode,B0 ???
+                        RB   1  ;EQU $72C4  if set to 1 you need to free the timer for Letter Monsters
+CHOMPNUMBER:            RB   1  ;EQU $72C5  store the current chomper 0-2
+TIMERCHOMP1:            RB   1  ;EQU $72C6  Game timer chomper mode
+CHOMPDATA:              RB  18  ;EQU $72C7  3x6 = 18 bytes (3 chompers)
+BALLDATA:               RB   6  ;EQU $72D9
+
+TEXT_BUFFER:            RB   8  ;EQU $72DF  ; 8 bytes - Text buffer for printing
+
+SCRATCH:                        ;Scratch ram
+SPTBUFF2:               RB   8  ;EQU $72E7  ; ?? SPT buffer
+
+ADDCURRTIMER:           RB 2    ;EQU $072EF ; 2 bytes used to remove overhead in the NMI
+FRAME_COUNT:            RB 1    ;EQU $072F1     Shared frame counter (0-59)
+
+
+P1_LEVEL1_SEC:          RB 1    ; EQU 072F2h ; Player 1 level 1 seconds     
+P1_LEVEL1_MIN:          RB 1    ; EQU 072F3h ; Player 1 level 1 minutes
+P1_LEVEL2_SEC:          RB 1    ; EQU 072F4h ; Player 1 level 2 seconds
+P1_LEVEL2_MIN:          RB 1    ; EQU 072F5h ; Player 1 level 2 minutes
+P1_LEVEL3_SEC:          RB 1    ; EQU 072F6h ; Player 1 level 3 seconds
+P1_LEVEL3_MIN:          RB 1    ; EQU 072F7h ; Player 1 level 3 minutes
+
+P1_PREV_SCORE:          RB 2    ; EQU 072F8h ; 2 bytes - Previous total score for P1
+P1_LEVEL1_SCORE:        RB 2    ; EQU 072FAh ; 2 bytes - Level 1 score
+P1_LEVEL2_SCORE:        RB 2    ; EQU 072FCh ; 2 bytes - Level 2 score
+P1_LEVEL3_SCORE:        RB 2    ; EQU 072FEh ; 2 bytes - Level 3 score
+
+P2_LEVEL1_SEC:          RB 1    ; EQU 07300h ; Player 1 level 1 seconds
+P2_LEVEL1_MIN:          RB 1    ; EQU 07301h ; Player 1 level 1 minutes
+P2_LEVEL2_SEC:          RB 1    ; EQU 07302h ; Player 1 level 2 seconds
+P2_LEVEL2_MIN:          RB 1    ; EQU 07303h ; Player 1 level 2 minutes
+P2_LEVEL3_SEC:          RB 1    ; EQU 07304h ; Player 1 level 3 seconds
+P2_LEVEL3_MIN:          RB 1    ; EQU 07305h ; Player 1 level 3 minutes
+
+P2_PREV_SCORE:          RB 2    ; EQU 07306h ; 2 bytes - Previous total score for P2
+P2_LEVEL1_SCORE:        RB 2    ; EQU 07308h ; 2 bytes - Level 1 score
+P2_LEVEL2_SCORE:        RB 2    ; EQU 0730Ah ; 2 bytes - Level 2 score
+P2_LEVEL3_SCORE:        RB 2    ; EQU 0730Ch ; 2 bytes - Level 3 score      
+
+P1_LEVEL_FINISH_BASE:   RB 3    ; EQU 0730Eh ;
+P2_LEVEL_FINISH_BASE:   RB 3    ; EQU 07311h ;
+
+SIGNPOSITION:           RB 1    ; EQU 0x07314 ;offeset in the game map (16x10)
+SIGNTIMER:              RB 1    ; EQU 0x07315 ;now we have free ram also at the end of the used area
+
+;SCORE_P1_RAM:          RB   2  ;EQU 07316h ;  SCORING FOR PLAYER#1
+;SCORE_P2_RAM:          RB   2  ;EQU 07318h ;  SCORING FOR PLAYER#2
+
+TIMER_DATA_BLOCK:       RB  21
+
+ENDUSEDRAM:             RB 1
+
+FRAMEPERSEC:            EQU $0069
+DEFER_WRITES:           EQU $73C6       ; System flag
+MUX_SPRITES:            EQU $73C7       ; System flag: enable sprite rotation ?
+RAND_NUM:               EQU $73C8       ; Used by RAND_GEN,it has to be !=0
+
+mode:                   EQU $73FD       ; Unused (?) used by OS
+; B0==0 -> ISR Enabled,B0==1 -> ISR disabled
+; B1==0 -> ISR served   B1==1 -> ISR pending
+; B3-B6 spare
+; B7==0 -> game mode,   B7==1 -> intermission mode
+
+FNAME "mrdo_reboot.rom"
 CPU Z80
 
 
-	ORG $8000
+    ORG $8000
 
     DW COLECO_TITLE_ON         ; SET TO COLECO_TITLE_ON FOR TITLES, COLECO_TITLE_OFF TO TURN THEM OFF
-    DW SPRITE_NAME_TABLE
-    DW SPRITE_ORDER_TABLE
-    DW WORK_BUFFER
+    DW 0;   SPRITE_NAME_TABLE
+    DW 0;   SPRITE_ORDER_TABLE
+    DW 0;   WORK_BUFFER
     DW CONTROLLER_BUFFER
     DW START
 
-	RET
+    RET
     NOP
     NOP
-	RET
+    RET
     NOP
     NOP
-	RET
+    RET
     NOP
     NOP
-	RET
+    RET
     NOP
     NOP
-	RET
+    RET
     NOP
     NOP
-	RET
+    RET
     NOP
     NOP
-	RETI
+    RETI
     NOP
     JP      NMI
 
-	DB "MR. DO!",1EH,1FH
-	DB "/PRESENTS UNIVERSAL'S/1983"
+    DB "MR. DO!",1EH,1FH
+    DB "/PRESENTS UNIVERSAL'S/1983"
 
 NMI:
     PUSH    AF
@@ -155,26 +301,28 @@ NMI:
     LD      BC, 1C2H
     CALL    WRITE_REGISTER
     CALL    READ_REGISTER
-    LD      HL, WORK_BUFFER
-    LD      DE, $7307
-    LD      BC, 18H
-    LDIR
-    LD      HL, $726E
+;    LD      HL, WORK_BUFFER
+;    LD      DE, $7307
+;    LD      BC, 18H
+;    LDIR
+    LD      HL, GAMECONTROL
     BIT     5, (HL)
     JR      Z, LOC_807E
     BIT     4, (HL)
     JR      Z, LOC_809F
-    LD      A, 14H
-    CALL    WR_SPR_NM_TBL
-    CALL    SUB_8107
+;    LD      A, 14H
+;    CALL    WR_SPR_NM_TBL
+;    CALL    SUB_8107
+    CALL NEW_SPRITE_ROTATION
     JR      LOC_809F
 LOC_807E:
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     3, A
     JR      NZ, LOC_808D
-    LD      A, 14H
-    CALL    WR_SPR_NM_TBL
-    CALL    SUB_8107
+ ;   LD      A, 14H
+ ;   CALL    WR_SPR_NM_TBL
+ ;   CALL    SUB_8107
+    CALL NEW_SPRITE_ROTATION
 LOC_808D:
     CALL    SUB_80D1
     CALL    SUB_8229
@@ -185,11 +333,11 @@ LOC_808D:
 LOC_809F:
     CALL    POLLER
     CALL    SUB_C952
-    LD      HL, $7307
-    LD      DE, WORK_BUFFER
-    LD      BC, 18H
-    LDIR
-    LD      HL, $726E
+;    LD      HL, $7307
+;    LD      DE, WORK_BUFFER
+;    LD      BC, 18H
+;    LDIR
+    LD      HL, GAMECONTROL
     BIT     7, (HL)
     JR      Z, LOC_80BB
     RES     7, (HL)
@@ -213,7 +361,7 @@ FINISH_NMI:
 RETN
 
 SUB_80D1:
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     LD      BC, 1401H
 LOC_80D7:
     LD      A, (HL)
@@ -224,13 +372,13 @@ LOC_80D7:
 LOC_80DD:
     PUSH    HL
     PUSH    DE
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     LD      A, E
     CALL    SUB_AC0B
     JR      Z, LOC_80F7
     POP     DE
     PUSH    DE
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     LD      A, E
     CALL    SUB_ABF6
     POP     DE
@@ -253,162 +401,205 @@ LOC_80FF:
     DJNZ    LOC_80D7
 RET
 
-SUB_8107:
-    LD      HL, BYTE_8215
-    LD      DE, WORK_BUFFER
-    LD      BC, 14H
-    LDIR
-    LD      A, 3
-    LD      ($72E7), A
-    LD      A, 13H
-    LD      ($72E8), A
-    LD      HL, $72F2
-    LD      IY, $70F5
-    LD      B, 11H
-LOC_8125:
-    LD      A, (HL)
-    AND     A
-    JP      NZ, LOC_81DC
-    LD      A, (IY+0)
-    CP      10H
-    JR      NC, LOC_813C
-    LD      A, ($72E7)
-    LD      (HL), A
-    INC     A
-    LD      ($72E7), A
-    JP      LOC_81DC
-LOC_813C:
-    PUSH    BC
-    PUSH    HL
-    PUSH    IY
-    LD      DE, 0
-    LD      C, (IY+0)
-    LD      A, ($726D)
-    RES     6, A
-    LD      ($726D), A
-    AND     3
-    CP      1
-    JR      C, LOC_81A1
-    JR      NZ, LOC_816F
-    LD      D, 4
-    LD      A, ($70ED)
-    SUB     C
-    JR      NC, LOC_8160
-    CPL
-    INC     A
-LOC_8160:
-    CP      10H
-    JR      NC, LOC_81A1
-    LD      A, ($726D)
-    SET     6, A
-    LD      ($726D), A
-    DEC     D
-    JR      LOC_81A1
-LOC_816F:
-    LD      D, 8
-    LD      A, ($70ED)
-    SUB     C
-    JR      NC, LOC_8179
-    CPL
-    INC     A
-LOC_8179:
-    CP      10H
-    JR      NC, LOC_81A1
-    LD      A, ($726D)
-    SET     6, A
-    LD      ($726D), A
-    LD      D, 6
-    JR      LOC_81A1
-LOC_8189:
-    DEC     B
-    JR      Z, LOC_81C0
-    INC     HL
-    INC     IY
-    INC     IY
-    INC     IY
-    INC     IY
-    LD      A, (IY+0)
-    SUB     C
-    JR      NC, LOC_819D
-    CPL
-    INC     A
-LOC_819D:
-    CP      10H
-    JR      NC, LOC_8189
-LOC_81A1:
-    INC     E
-    LD      A, (HL)
-    AND     A
-    JR      NZ, LOC_8189
-    LD      A, E
-    CP      D
-    JR      C, LOC_81B6
-    JR      Z, LOC_81B6
-    LD      A, ($72E7)
-    LD      (HL), A
-    INC     A
-    LD      ($72E7), A
-    JR      LOC_8189
-LOC_81B6:
-    LD      A, ($72E8)
-    LD      (HL), A
-    DEC     A
-    LD      ($72E8), A
-    JR      LOC_8189
-LOC_81C0:
-    LD      A, E
-    CP      9
-    JR      NC, LOC_81D0
-    CP      7
-    JR      C, LOC_81D8
-    LD      A, ($726D)
-    BIT     6, A
-    JR      Z, LOC_81D8
-LOC_81D0:
-    LD      A, ($726D)
-    SET     7, A
-    LD      ($726D), A
-LOC_81D8:
-    POP     IY
-    POP     HL
-    POP     BC
-LOC_81DC:
-    INC     HL
-    INC     IY
-    INC     IY
-    INC     IY
-    INC     IY
-    DEC     B
-    JP      NZ, LOC_8125
-    LD      HL, $726D
-    LD      A, (HL)
-    INC     A
-    AND     3
-    CP      2
-    JR      C, LOC_81FB
-    JR      NZ, LOC_81FA
-    BIT     7, (HL)
-    JR      NZ, LOC_81FB
-LOC_81FA:
+
+NEW_SPRITE_ROTATION:
+    LD      A,SAT and 255       ; Send LSB of address
+    OUT     (CTRL_PORT),A
+    LD      A,$40  + (SAT / 256)
+    OUT     (CTRL_PORT),A       ; Send MSB of address
+
+    LD      DE,$1005            ; copy 20 sprites 4 at time (5*4=20 and 4*4=16)
+
+    LD      A,(SPRITEROTFLAG)
+    ADD     A,D
+    CP      20*4
+    JR      C,.nores
     XOR     A
-LOC_81FB:
-    LD      ($726D), A
-    LD      DE, SPRITE_ORDER_TABLE
-    LD      B, 14H
-    LD      IY, WORK_BUFFER
+.nores:
+    LD      (SPRITEROTFLAG),A
+
+    LD      C,A
+    LD      B,0
+    LD      HL,SPRITE_NAME_TABLE
+    ADD     HL,BC
+
+    LD      C,DATA_PORT         ; C = output port
+
+.2: LD      B,D                 ; B = count for 4*4 bytes, i.e. 4 sprites
+.1: OUTI                        ; Output a byte of data
+    JP      NZ,.1               ; Loop until 4*4 bytes copied
+
+
+    ADD     A,D
+    CP      20*4                ; start from the top if reach the end of the table
+    JR      C,.3
+
+    LD      HL,SPRITE_NAME_TABLE
     XOR     A
-LOOP_8208:
-    LD      H, 0
-    LD      L, (IY+0)
-    ADD     HL, DE
-    LD      (HL), A
-    INC     A
-    INC     IY
-    DJNZ    LOOP_8208
+
+.3: DEC     E
+    JR      NZ,.2
+
+    LD      A,208
+    OUT     (DATA_PORT),A
 RET
 
-BYTE_8215:
-	DB 000,001,002,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000
+; SUB_8107:
+    ; LD      HL, BYTE_8215
+    ; LD      DE, WORK_BUFFER
+    ; LD      BC, 14H
+    ; LDIR
+    ; LD      A, 3
+    ; LD      ($72E7), A
+    ; LD      A, 13H
+    ; LD      ($72E8), A
+    ; LD      HL, $72F2
+    ; LD      IY, $70F5
+    ; LD      B, 11H
+; LOC_8125:
+    ; LD      A, (HL)
+    ; AND     A
+    ; JP      NZ, LOC_81DC
+    ; LD      A, (IY+0)
+    ; CP      10H
+    ; JR      NC, LOC_813C
+    ; LD      A, ($72E7)
+    ; LD      (HL), A
+    ; INC     A
+    ; LD      ($72E7), A
+    ; JP      LOC_81DC
+; LOC_813C:
+    ; PUSH    BC
+    ; PUSH    HL
+    ; PUSH    IY
+    ; LD      DE, 0
+    ; LD      C, (IY+0)
+    ; LD      A, ($726D)
+    ; RES     6, A
+    ; LD      ($726D), A
+    ; AND     3
+    ; CP      1
+    ; JR      C, LOC_81A1
+    ; JR      NZ, LOC_816F
+    ; LD      D, 4
+    ; LD      A, ($70ED)
+    ; SUB     C
+    ; JR      NC, LOC_8160
+    ; CPL
+    ; INC     A
+; LOC_8160:
+    ; CP      10H
+    ; JR      NC, LOC_81A1
+    ; LD      A, ($726D)
+    ; SET     6, A
+    ; LD      ($726D), A
+    ; DEC     D
+    ; JR      LOC_81A1
+; LOC_816F:
+    ; LD      D, 8
+    ; LD      A, ($70ED)
+    ; SUB     C
+    ; JR      NC, LOC_8179
+    ; CPL
+    ; INC     A
+; LOC_8179:
+    ; CP      10H
+    ; JR      NC, LOC_81A1
+    ; LD      A, ($726D)
+    ; SET     6, A
+    ; LD      ($726D), A
+    ; LD      D, 6
+    ; JR      LOC_81A1
+; LOC_8189:
+    ; DEC     B
+    ; JR      Z, LOC_81C0
+    ; INC     HL
+    ; INC     IY
+    ; INC     IY
+    ; INC     IY
+    ; INC     IY
+    ; LD      A, (IY+0)
+    ; SUB     C
+    ; JR      NC, LOC_819D
+    ; CPL
+    ; INC     A
+; LOC_819D:
+    ; CP      10H
+    ; JR      NC, LOC_8189
+; LOC_81A1:
+    ; INC     E
+    ; LD      A, (HL)
+    ; AND     A
+    ; JR      NZ, LOC_8189
+    ; LD      A, E
+    ; CP      D
+    ; JR      C, LOC_81B6
+    ; JR      Z, LOC_81B6
+    ; LD      A, ($72E7)
+    ; LD      (HL), A
+    ; INC     A
+    ; LD      ($72E7), A
+    ; JR      LOC_8189
+; LOC_81B6:
+    ; LD      A, ($72E8)
+    ; LD      (HL), A
+    ; DEC     A
+    ; LD      ($72E8), A
+    ; JR      LOC_8189
+; LOC_81C0:
+    ; LD      A, E
+    ; CP      9
+    ; JR      NC, LOC_81D0
+    ; CP      7
+    ; JR      C, LOC_81D8
+    ; LD      A, ($726D)
+    ; BIT     6, A
+    ; JR      Z, LOC_81D8
+; LOC_81D0:
+    ; LD      A, ($726D)
+    ; SET     7, A
+    ; LD      ($726D), A
+; LOC_81D8:
+    ; POP     IY
+    ; POP     HL
+    ; POP     BC
+; LOC_81DC:
+    ; INC     HL
+    ; INC     IY
+    ; INC     IY
+    ; INC     IY
+    ; INC     IY
+    ; DEC     B
+    ; JP      NZ, LOC_8125
+    ; LD      HL, $726D
+    ; LD      A, (HL)
+    ; INC     A
+    ; AND     3
+    ; CP      2
+    ; JR      C, LOC_81FB
+    ; JR      NZ, LOC_81FA
+    ; BIT     7, (HL)
+    ; JR      NZ, LOC_81FB
+; LOC_81FA:
+    ; XOR     A
+; LOC_81FB:
+    ; LD      ($726D), A
+    ; LD      DE, SPRITE_ORDER_TABLE
+    ; LD      B, 14H
+    ; LD      IY, WORK_BUFFER
+    ; XOR     A
+; LOOP_8208:
+    ; LD      H, 0
+    ; LD      L, (IY+0)
+    ; ADD     HL, DE
+    ; LD      (HL), A
+    ; INC     A
+    ; INC     IY
+    ; DJNZ    LOOP_8208
+; RET
+
+;BYTE_8215:
+;   DB 000,001,002,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000
 
 SUB_8229:
     LD      HL, $7281
@@ -429,7 +620,7 @@ LOC_8241:
     LD      A, ($7285)
     LD      C, A
     LD      A, 81H
-    CALL    SUB_B629
+    CALL    PUTSPRITE
 LOCRET_8250:
 RET
 
@@ -446,7 +637,7 @@ LOC_825D:
     RES     6, (HL)
     LD      A, 1
 LOC_8265:
-    CALL    PATTERNS_TO_VRAM
+    CALL    PRINT_SCORE
 LOCRET_8268:
 RET
 
@@ -471,7 +662,7 @@ LOC_8282:
     AND     (HL)
     LD      ($72BC), A
     INC     HL
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     LD      A, ($72B8)
     JR      Z, LOC_8297
@@ -512,20 +703,20 @@ LOCRET_82D2:
 RET
 
 BYTE_82D3:
-	DB 254,001,253,002,251,004,247,008,239,016
+    DB 254,001,253,002,251,004,247,008,239,016
 BYTE_82DD:
-	DB 000
+    DB 000
 
 SUB_82DE:
     LD      HL, $7272
     BIT     0, (HL)
     JR      Z, LOC_8305
     RES     0, (HL)
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     JR      Z, LOC_82F4
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_82F4:
     DEC     A
     CP      0AH
@@ -549,7 +740,7 @@ LOC_8310:
     LD      HL, DIAMOND_RAM
     BIT     7, (HL)
     JR      Z, LOCRET_8332
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      B, (IX+1)
     LD      C, (IX+2)
     LD      D, 0
@@ -561,32 +752,30 @@ LOC_8329:
     XOR     1
     LD      (HL), A
     LD      A, 8DH
-    CALL    SUB_B629
+    CALL    PUTSPRITE
 LOCRET_8332:
 RET
 
 BYTE_8333:
-	DB 010,011,012,013,010,011,012,013,010,011
+    DB 010,011,012,013,010,011,012,013,010,011
 
 START:
-	LD      HL, $7000
-	LD      DE, $7000+1
-	LD      BC, $300
-	LD      (HL), 0
-	LDIR
+    LD      HL, $7000
+    LD      DE, $7000+1
+    LD      BC, $300
+    LD      (HL), 0
+    LDIR
 
-
-
-    LD      DE, SPRITE_ORDER_TABLE
-LOC_8340:
-    XOR     A
-    LD      (DE), A
-    INC     DE
-    LD      HL, $73B0
-    SBC     HL, DE
-    LD      A, H
-    OR      L
-    JR      NZ, LOC_8340
+    ; LD      DE, SPRITE_ORDER_TABLE
+; LOC_8340:
+    ; XOR     A
+    ; LD      (DE), A
+    ; INC     DE
+    ; LD      HL, $73B0
+    ; SBC     HL, DE
+    ; LD      A, H
+    ; OR      L
+    ; JR      NZ, LOC_8340
     LD      A, 1
     LD      (DEFER_WRITES+1), A
     LD      A, 0
@@ -634,7 +823,7 @@ LOC_8378:
     CP      1
     JR      NZ, LOC_83CB
 LOC_83AB:
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      B, 5
 LOOP_83B1:
     BIT     3, (IX+0)
@@ -678,7 +867,7 @@ LOC_83EC:
     CP      9
     JR      NC, LOC_83DF
 LOC_83F6:
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     RES     0, (HL)
     CP      5
     JR      C, LOC_8403
@@ -787,7 +976,7 @@ RET
 
 SUB_84F8:
     PUSH    AF
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_84FE:
     BIT     7, (HL)
@@ -813,8 +1002,8 @@ SUB_851C:
     LD      (SCORE_P1_RAM), HL
     LD      (SCORE_P2_RAM), HL
     LD      A, 1
-    LD      (CURRENT_LEVEL_RAM), A
-    LD      ($7275), A
+    LD      (CURRENT_LEVEL_P1), A
+    LD      (CURRENT_LEVEL_P2), A
     XOR     A
     LD      ($727A), A
     LD      ($727B), A
@@ -826,16 +1015,16 @@ SUB_851C:
 LOC_853F:
     LD      (LIVES_LEFT_P1_RAM), A
     LD      (LIVES_LEFT_P2_RAM), A
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     AND     1
-    LD      ($726E), A
+    LD      (GAMECONTROL), A
     LD      A, 1
     CALL    SUB_B286
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     LD      DE, 3400H
     LD      BC, 0D4H
     CALL    WRITE_VRAM
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     LD      DE, 3600H
     LD      BC, 0D4H
     CALL    WRITE_VRAM
@@ -860,15 +1049,15 @@ SUB_8585:
     LD      ($72DD), A
     LD      ($7272), A
     LD      (DIAMOND_RAM), A
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     RES     6, (HL)
     LD      DE, 3400H
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     JR      Z, LOC_85A4
     LD      DE, 3600H
 LOC_85A4:
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     LD      BC, 0D4H
     CALL    READ_VRAM
     XOR     A
@@ -879,11 +1068,11 @@ LOC_85B6:
     LD      (HL), A
     INC     HL
     DJNZ    LOC_85B6
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     JR      Z, LOC_85C7
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_85C7:
     CP      0BH
     JR      C, DEAL_WITH_BADGUY_BEHAVIOR
@@ -909,11 +1098,11 @@ DEAL_WITH_BADGUY_BEHAVIOR:
     LD      HL, TIMER_TABLE
     LD      DE, TIMER_DATA_BLOCK
     CALL    INIT_TIMER
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     JR      Z, LOC_8603
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_8603:
     CP      0BH
     JR      C, SEND_PHASE_COLORS_TO_VRAM
@@ -948,7 +1137,7 @@ LOC_862E:
     AND     3FH
     LD      ($72BA), A
     LD      HL, $7278
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     AND     3
     CP      3
     JR      NZ, LOC_8652
@@ -990,10 +1179,10 @@ CLEAR_SCREEN_AND_SPRITES_01:
     LD      HL, SPRITE_NAME_TABLE
     LD      B, 50H
 LOOP_8691:
-    LD      (HL), 0
+    LD      (HL), $D1   ;***
     INC     HL
     DJNZ    LOOP_8691
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     LD      A, 4
     JR      Z, LOC_86A1
@@ -1013,7 +1202,7 @@ LOC_86B2:
     AND     A
     JR      Z, LOC_86B2
     POP     AF
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_86C0:
     BIT     7, (HL)
@@ -1032,7 +1221,7 @@ CLEAR_SCREEN_AND_SPRITES_02:
     LD      HL, SPRITE_NAME_TABLE
     LD      B, 50H
 LOOP_86E0:
-    LD      (HL), 0
+    LD      (HL), $D1   ;***
     INC     HL
     DJNZ    LOOP_86E0
     LD      A, 0A0H
@@ -1045,20 +1234,20 @@ LOOP_TILL_PLAYFIELD_PARTS_ARE_DONE:
     LD      A, 1
     CALL    DEAL_WITH_PLAYFIELD
     XOR     A
-    CALL    PATTERNS_TO_VRAM
-    LD      A, ($726E)
+    CALL    PRINT_SCORE
+    LD      A, (GAMECONTROL)
     BIT     0, A
     JR      Z, LOC_8709
     LD      A, 0FH
     CALL    DEAL_WITH_PLAYFIELD
     LD      A, 1
-    CALL    PATTERNS_TO_VRAM
+    CALL    PRINT_SCORE
 LOC_8709:
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     JR      Z, LOC_8716
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_8716:
     LD      HL, $72E7
     LD      D, 0D8H
@@ -1088,7 +1277,7 @@ LOC_8739:
     LD      A, 2
     CALL    DEAL_WITH_PLAYFIELD
     LD      HL, $72B8
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     JR      Z, LOC_8753
     LD      HL, $72B9
@@ -1120,7 +1309,7 @@ SEND_EXTRA_TO_VRAM:
     LD      A, C
     CP      5
     JR      NZ, LOC_8759
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     LD      HL, LIVES_LEFT_P1_RAM
     JR      Z, LOC_878C
@@ -1154,7 +1343,7 @@ LOC_87B9:
     LD      A, 3
     CALL    DEAL_WITH_PLAYFIELD
     LD      B, 5
-    LD      IY, $722C
+    LD      IY, APPLEDATA
     LD      A, 0CH
 LOOP_87C6:
     BIT     7, (IY+0)
@@ -1165,7 +1354,7 @@ LOOP_87C6:
     LD      B, (IY+1)
     LD      C, (IY+2)
     LD      D, 1
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     POP     AF
     POP     IX
     POP     BC
@@ -1177,11 +1366,11 @@ LOC_87DF:
 RET
 
 EXTRA_01_TXT:
-	DB 050,051,052,053,054
+    DB 050,051,052,053,054
 EXTRA_02_TXT:
-	DB 072,073,074,075,076
+    DB 072,073,074,075,076
 MR_DO_UPPER:
-	DB 120
+    DB 120
 MR_DO_LOWER:
     DB 121
 
@@ -1207,7 +1396,7 @@ SUB_87F4:
 RET
 
 SUB_8828:
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     LD      A, (KEYBOARD_P1)
     JR      Z, CHECK_FOR_PAUSE
@@ -1215,7 +1404,7 @@ SUB_8828:
 CHECK_FOR_PAUSE:
     CP      0AH
     JP      NZ, LOCRET_88D0
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 ENTER_PAUSE:
     BIT     7, (HL)
@@ -1228,7 +1417,7 @@ ENTER_PAUSE:
     LD      A, 2
     LD      HL, 3800H
     CALL    INIT_TABLE
-    LD      HL, $7020
+    LD      HL, STATESTART
     LD      DE, 3B00H
     LD      BC, 5DH
     CALL    WRITE_VRAM
@@ -1245,7 +1434,7 @@ LOC_8871:
     JR      NZ, LOC_8871
     DJNZ    LOOP_886E
 LOOP_TILL_UN_PAUSE:
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     LD      A, (KEYBOARD_P1)
     JR      Z, CHECK_TO_LEAVE_PAUSE
@@ -1254,7 +1443,7 @@ CHECK_TO_LEAVE_PAUSE:
     CP      0AH
     JR      NZ, LOOP_TILL_UN_PAUSE
     CALL    INITIALIZE_THE_SOUND
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_8891:
     BIT     7, (HL)
@@ -1274,7 +1463,7 @@ LOC_88AA:
     OR      H
     JR      NZ, LOC_88AA
     DJNZ    LOC_88A7
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_88B6:
     BIT     7, (HL)
@@ -1282,7 +1471,7 @@ LOC_88B6:
     LD      A, (HL)
     AND     0CFH
     LD      (HL), A
-    LD      HL, $7020
+    LD      HL, STATESTART
     LD      DE, 3B00H
     LD      BC, 5DH
     CALL    READ_VRAM
@@ -1357,21 +1546,21 @@ LOC_8945:
     POP     AF
 LEADS_TO_FALLING_APPLE_04:
     PUSH    AF
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     INC     A
     CP      5
     JR      C, LOC_8954
     XOR     A
 LOC_8954:
-    LD      ($722A), A
+    LD      (CURRAPPL), A
     POP     AF
     AND     A
 RET
 
 LEADS_TO_FALLING_APPLE_03:
-    LD      IY, $722C
+    LD      IY, APPLEDATA
     LD      HL, BYTE_896C
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     LD      C, A
     LD      B, 0
     ADD     HL, BC
@@ -1380,7 +1569,7 @@ LEADS_TO_FALLING_APPLE_03:
 RET
 
 BYTE_896C:
-	DB 000,005,010,015,020,025
+    DB 000,005,010,015,020,025
 
 SUB_8972:
     LD      HL, 0FH
@@ -1430,11 +1619,11 @@ LOC_89C1:
     LD      A, D
     AND     A
     JR      NZ, LOC_89C8
-    LD      BC, 808H
+    LD      BC, $DA08   ;808H
 LOC_89C8:
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     ADD     A, 0CH
-    CALL    SUB_B629
+    CALL    PUTSPRITE
 RET
 
 SUB_89D1:
@@ -1451,13 +1640,13 @@ SUB_89D1:
     LD      E, (HL)
     INC     HL
     LD      D, (HL)
-    CALL    SUB_B601
+    CALL    SUB_B601    ; score for apples smashed (enemy smashed?)
 LOC_89E9:
     POP     IY
 RET
 
 BYTE_89EC:
-	DB 100,000,200,000,144,001,088,002,032,003,232,003,176,004,120,005,064,006,008,007,208,007,152,008
+    DW 100,200,600,800,1000,1200,1400,1600,1800,2000,2200
 
 DEAL_WITH_RANDOM_DIAMOND:
     PUSH    IY
@@ -1470,7 +1659,7 @@ DEAL_WITH_RANDOM_DIAMOND:
     JR      NC, LOC_8A2E
     LD      B, (IY+1)
     LD      C, (IY+2)
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      (IX+1), B
     LD      (IX+2), C
     LD      A, 80H
@@ -1484,7 +1673,7 @@ SUB_8A31:
     PUSH    BC
     PUSH    DE
     PUSH    IX
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      B, 5
     LD      C, 0
     LD      DE, 5
@@ -1572,7 +1761,7 @@ SUB_8AD9:
     LD      A, B
     AND     0FH
     RET     NZ
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     DEC     IX
     DEC     D
     LD      A, (IX+11H)
@@ -1682,7 +1871,7 @@ SUB_8BB1:
     PUSH    BC
     PUSH    DE
     PUSH    IX
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     IX
     POP     DE
@@ -1702,9 +1891,9 @@ LOC_8BCE:
     CALL    SUB_8CFE
     JR      NZ, LOC_8BF4
     SET     7, (IY+4)
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     SET     6, A
-    LD      ($726E), A
+    LD      (GAMECONTROL), A
     LD      A, D
 LOC_8BE4:
     LD      ($7284), A
@@ -1749,7 +1938,7 @@ LOC_8C28:
     LD      C, A
     LD      D, 0BH
     LD      A, 3
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     XOR     A
 LOC_8C38:
     AND     A
@@ -1769,7 +1958,7 @@ LOC_8C40:
     BIT     7, (IX+0)
     JR      Z, LOC_8C68
     LD      B, (IX+5)
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     CP      B
     JR      NZ, LOC_8C8D
     LD      A, D
@@ -1780,7 +1969,7 @@ LOC_8C68:
     CALL    SUB_8CFE
     JR      NZ, LOC_8C8D
     SET     7, (IX+0)
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     LD      (IX+5), A
     INC     (IY+4)
 LOC_8C7A:
@@ -1791,7 +1980,7 @@ LOC_8C7A:
     ADD     A, 5
     LD      D, 25H
     PUSH    IX
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     POP     IX
 LOC_8C8D:
     LD      DE, 6
@@ -1812,7 +2001,7 @@ LOC_8C9C:
     BIT     7, (IX+0)
     JR      Z, LOC_8CBE
     LD      B, (IX+5)
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     CP      B
     JR      NZ, LOC_8CF5
     LD      A, D
@@ -1823,7 +2012,7 @@ LOC_8CBE:
     CALL    SUB_8CFE
     JR      NZ, LOC_8CF5
     SET     7, (IX+0)
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     LD      (IX+5), A
     INC     (IY+4)
 LOC_8CD0:
@@ -1847,7 +2036,7 @@ LOC_8CEA:
     ADD     A, 11H
     LD      D, 5
     PUSH    IX
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     POP     IX
 LOC_8CF5:
     LD      DE, 6
@@ -1886,10 +2075,10 @@ LOC_8D21:
 RET
 
 SUB_8D25:
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      BC, 0
 LOC_8D2C:
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     CP      C
     JR      Z, LOC_8D80
     LD      A, (IX+0)
@@ -1957,7 +2146,7 @@ LOC_8DA1:
     BIT     7, (IX+0)
     JR      Z, LOC_8DC5
     LD      B, (IX+5)
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     CP      B
     JR      NZ, LOC_8DC5
     CALL    SUB_B7C4
@@ -1979,7 +2168,7 @@ LOOP_8DD3:
     BIT     7, (IX+0)
     JR      Z, LOST_A_LIFE
     LD      B, (IX+5)
-    LD      A, ($722A)
+    LD      A, (CURRAPPL)
     CP      B
     JR      NZ, LOST_A_LIFE
     CALL    SUB_B832
@@ -2042,7 +2231,7 @@ SUB_8E48:
     LD      B, (IY+1)
     LD      C, (IY+2)
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     DE
     LD      A, B
     CP      0B0H
@@ -2252,7 +2441,7 @@ LOC_8F96:
 RET
 
 UNK_8F98:
-	DB    0
+    DB    0
     DW LOC_8E88
     DB  40H
     DW LOC_8E9A
@@ -2395,7 +2584,7 @@ RET
 
 SUB_9099:
     LD      DE, 0
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      B, 5
 LOC_90A2:
     BIT     7, (IX+0)
@@ -2480,7 +2669,7 @@ LOC_913D:
 LOC_9145:
     LD      E, 0
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     DE
     LD      A, (IY+1)
     AND     0FH
@@ -2608,7 +2797,7 @@ LOC_922A:
     SUB     4
     LD      C, A
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     DE
     BIT     3, (IX+0)
     JP      NZ, LOC_92E8
@@ -2618,7 +2807,7 @@ LOC_9263:
     ADD     A, 4
     LD      C, A
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     DE
     BIT     2, (IX+0)
     JR      NZ, LOC_92E8
@@ -2633,7 +2822,7 @@ LOC_9275:
     SUB     4
     LD      C, A
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     DE
     BIT     1, (IX+0)
     JR      NZ, LOC_92E8
@@ -2643,7 +2832,7 @@ LOC_9291:
     ADD     A, 4
     LD      C, A
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     DE
     BIT     0, (IX+0)
     JR      NZ, LOC_92E8
@@ -2770,10 +2959,10 @@ SUB_936F:
     CALL    SUB_B5DD
     AND     A
     JR      Z, LOCRET_9398
-    LD      BC, 808H
+    LD      BC, $DA08   ;808H
     LD      D, 0
     LD      A, 3
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     LD      DE, 32H
     CALL    SUB_B601
     CALL    SUB_B76D
@@ -2803,7 +2992,7 @@ SUB_93B6:
     LD      C, (IY+2)
     LD      D, 1
     LD      A, 4
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     LD      HL, 1
     XOR     A
     CALL    REQUEST_SIGNAL
@@ -2826,7 +3015,7 @@ SUB_93CE:
 LOC_93ED:
     LD      D, A
     LD      A, 4
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     INC     (IY+5)
     LD      A, (IY+5)
     CP      6
@@ -2857,10 +3046,10 @@ LOC_9421:
     XOR     A
     CALL    REQUEST_SIGNAL
     LD      (IY+3), A
-    LD      BC, 808H
+    LD      BC, $DA08   ;808H
     LD      D, 0
     LD      A, 4
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     JR      LOCRET_944D
 LOC_9444:
     RES     3, (IY+0)
@@ -2869,11 +3058,14 @@ LOC_9444:
 LOCRET_944D:
 RET
 
+; timer for ball
+
 BYTE_944E:
-	DB 060,000,120,000,240,000,104,001,224,001,000
+    DW 60,120,240,360,480
+    db 0
 
 LEADS_TO_CHERRY_STUFF:
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     6, A
     JR      Z, LOC_9463
     XOR     A
@@ -2909,7 +3101,7 @@ LOC_9491:
     AND     A
     JR      NZ, LOCRET_94A8
 LOC_949A:
-    LD      HL, $7245
+    LD      HL, ENEMYINTERACT
     LD      B, 14H
     XOR     A
 LOC_94A0:
@@ -2923,7 +3115,7 @@ RET
 
 SUB_94A9:
     LD      IX, $7088
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     JR      Z, LOC_94B8
     LD      IX, $708D
@@ -2985,7 +3177,7 @@ LOC_9514:
     LD      ($72DB), A
 LOC_9524:
     PUSH    IX
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      A, (IX+0)
     POP     IX
     AND     0FH
@@ -3108,7 +3300,7 @@ LOC_9606:
     LD      B, (IY+3)
     LD      C, (IY+4)
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     CALL    SUB_AEB7
     POP     DE
     XOR     A
@@ -3241,13 +3433,13 @@ SUB_96E4:
     LD      A, 0AH
     LD      ($728C), A
     LD      HL, (SCORE_P1_RAM)
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     LD      C, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     BIT     1, C
     JR      Z, LOC_971B
     LD      HL, (SCORE_P2_RAM)
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_971B:
     LD      HL, 0
     LD      DE, 32H
@@ -3354,7 +3546,7 @@ LOC_97A9:
     LD      B, A
     LD      D, 1
     LD      A, 4
-    CALL    SUB_B629
+    CALL    PUTSPRITE
 LOC_97C8:
     LD      HL, 1EH
     BIT     3, (IY+0)
@@ -3374,7 +3566,7 @@ LOC_97DD:
 RET
 
 BYTE_97EF:
-	DB 002,006,014,006,006,014,006,002,010,014,010,002,012,008,004,008,008,004,008,012,008,004,008,012
+    DB 002,006,014,006,006,014,006,002,010,014,010,002,012,008,004,008,008,004,008,012,008,004,008,012
 
 SUB_9807:
     LD      A, (DIAMOND_RAM)
@@ -3664,7 +3856,7 @@ SUB_9A12:
 RET
 
 BYTE_9A24:
-	DB 000,006,012,018,024,030,036,042
+    DB 000,006,012,018,024,030,036,042
 
 SUB_9A2C:
     PUSH    IX
@@ -3738,7 +3930,7 @@ LOC_9AB1:
 RET
 
 BYTE_9AB5:
-	DB 176,112,224,208
+    DB 176,112,224,208
 
 SUB_9AB9:
     PUSH    DE
@@ -3777,7 +3969,7 @@ SUB_9AE2:
     CALL    SUB_9B4F
     LD      B, (IY+2)
     LD      C, (IY+1)
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      D, A
     CALL    SUB_B173
     LD      D, 19H
@@ -3820,7 +4012,7 @@ LOC_9B36:
     ADD     A, 5
     LD      B, (IY+2)
     LD      C, (IY+1)
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     POP     IY
     POP     IX
 RET
@@ -3863,7 +4055,7 @@ LOC_9B83:
 RET
 
 OFF_9B89:
-	DW SUB_B2FA
+    DW SUB_B2FA
     DW SUB_B39D
     DW SUB_B43F
     DW SUB_B4E9
@@ -3935,8 +4127,8 @@ LOC_9BE8:
     LD      IX, BYTE_9D1A
     ADD     IX, BC
     LD      C, (IX+0)
-    LD      HL, CURRENT_LEVEL_RAM
-    LD      A, ($726E)
+    LD      HL, CURRENT_LEVEL_P1
+    LD      A, (GAMECONTROL)
     AND     3
     CP      3
     JR      NZ, LOC_9C05
@@ -3975,9 +4167,9 @@ LOC_9C27:
 RET
 
 BYTE_9C36:
-	DB 013,009,013,009,013,009,010,012,010,012,010,012,008,015,008,015,006,020,006,020,005,024,005,024,005,024,004,030,004,030,004,030
+    DB 013,009,013,009,013,009,010,012,010,012,010,012,008,015,008,015,006,020,006,020,005,024,005,024,005,024,004,030,004,030,004,030
 BYTE_9C56:
-	DB 008,001,008,001,008,001,006,001,006,001,006,001,005,001,005,001,005,001,005,001,004,001,004,001,004,001,004,001,004,001,004,001
+    DB 008,001,008,001,008,001,006,001,006,001,006,001,005,001,005,001,005,001,005,001,004,001,004,001,004,001,004,001,004,001,004,001
 
 SUB_9C76:
     LD      B, 0
@@ -4051,8 +4243,8 @@ SUB_9CE0:
     LD      HL, BYTE_9D1A
     ADD     HL, DE
     LD      E, (HL)
-    LD      HL, CURRENT_LEVEL_RAM
-    LD      A, ($726E)
+    LD      HL, CURRENT_LEVEL_P1
+    LD      A, (GAMECONTROL)
     AND     3
     CP      3
     JR      NZ, LOC_9CFB
@@ -4083,9 +4275,9 @@ LOC_9D0F:
 RET
 
 BYTE_9D1A:
-	DB 000,003,005,007
+    DB 000,003,005,007
 BYTE_9D1E:
-	DB 008,008,009,009,010,010,011,011,012,012,013,013,014,014,014,014,014
+    DB 008,008,009,009,010,010,011,011,012,012,013,013,014,014,014,014,014
 
 SUB_9D2F:
     LD      C, A
@@ -4164,7 +4356,7 @@ LOC_9D9D:
 RET
 
 OFF_9D9F:
-	DW LOC_9D67
+    DW LOC_9D67
     DW LOC_9D6C
     DW LOC_9D71
     DW LOC_9D76
@@ -4387,22 +4579,22 @@ LOC_9F10:
 RET
 
 BYTE_9F15:
-	DB 016,003,032,004,064,001,128,002
+    DB 016,003,032,004,064,001,128,002
 
 OFF_9F1D:
-	DW LOC_9EE5
+    DW LOC_9EE5
     DW LOC_9EED
     DW LOC_9EF5
     DW LOC_9EFD
 
 BYTE_9F25:
-	DB 064,128,016,032
+    DB 064,128,016,032
 
 SUB_9F29:
     PUSH    IX
     LD      B, (IY+2)
     LD      C, (IY+1)
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      C, A
     LD      HL, UNK_9FB3
     LD      A, (IY+1)
@@ -4490,7 +4682,7 @@ LOC_9FAF:
 RET
 
 UNK_9FB3:
-	DB    0
+    DB    0
     DW LOC_9F62
     DB  40H
     DW LOC_9F7E
@@ -4540,7 +4732,7 @@ SUB_9FF4:
     PUSH    AF
     LD      B, (IY+2)
     LD      C, (IY+1)
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     BC
     CALL    SUB_A028
     JR      NZ, LOC_A00C
@@ -4735,7 +4927,7 @@ LOC_A124:
 RET
 
 UNK_A12A:
-	DB    0
+    DB    0
     DW LOC_A060
     DB  40H
     DW LOC_A060
@@ -4901,7 +5093,7 @@ LOC_A21E:
     LD      (IY+0), A
     LD      B, (IY+2)
     LD      C, (IY+1)
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      E, A
     CALL    SUB_A259
     JR      NZ, LOC_A241
@@ -4944,7 +5136,7 @@ SUB_A259:
     LD      B, A
     LD      A, ($72DB)
     LD      C, A
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     PUSH    AF
     PUSH    IX
     CALL    SUB_ABB7
@@ -5137,7 +5329,7 @@ SUB_A382:
     CALL    SUB_ABB7
     POP     DE
     LD      L, 5
-    LD      IY, $722C
+    LD      IY, APPLEDATA
 LOC_A394:
     BIT     7, (IY+0)
     JR      Z, LOC_A3EE
@@ -5155,7 +5347,7 @@ LOC_A394:
     PUSH    IX
     LD      B, (IY+1)
     LD      C, (IY+2)
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     IX
     POP     HL
     POP     DE
@@ -5212,7 +5404,7 @@ SUB_A402:
     LD      B, (IY+2)
     LD      C, (IY+1)
     LD      L, 5
-    LD      IX, $722C
+    LD      IX, APPLEDATA
 LOC_A412:
     BIT     7, (IX+0)
     JR      Z, LOC_A44D
@@ -5328,7 +5520,7 @@ LOC_A4C8:
     SUB     10H
 LOC_A4CC:
     LD      C, A
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      L, 5
 LOC_A4D3:
     BIT     7, (IX+0)
@@ -5380,11 +5572,11 @@ LOC_A520:
 RET
 
 BYTE_A523:
-	DB 064,128,016,032
+    DB 064,128,016,032
 
 SUB_A527:
     PUSH    BC
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     LD      B, A
     LD      A, ($7278)
     BIT     0, B
@@ -5494,7 +5686,7 @@ SUB_A5BD:
 RET
 
 BYTE_A5F1:
-	DB 091,107,123,139,155,139,123,107
+    DB 091,107,123,139,155,139,123,107
 
 SUB_A5F9:
     LD      A, ($72BA)
@@ -5505,7 +5697,7 @@ SUB_A5F9:
     ADD     HL, BC
     LD      B, (HL)
     LD      HL, $72B8
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     AND     3
     CP      3
     JR      NZ, LOC_A613
@@ -5516,15 +5708,15 @@ LOC_A613:
 RET
 
 BYTE_A616:
-	DB 002
+    DB 002
 BYTE_A617:
-	DB 001,002,004,008,016,008,004,002
+    DB 001,002,004,008,016,008,004,002
 
 SUB_A61F:
     LD      HL, $727A
     LD      BC, (SCORE_P1_RAM)
     LD      HL, $727A
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     AND     3
     CP      3
     JR      NZ, LOC_A637
@@ -5563,11 +5755,11 @@ LOC_A65F:
 RET
 
 SUB_A662:
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     JR      Z, LOC_A66F
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_A66F:
     CP      0BH
     JR      C, LOC_A677
@@ -5681,7 +5873,7 @@ LOC_A74B:
     LD      A, ($72BE)
     LD      C, A
     PUSH    DE
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     POP     BC
     CALL    SUB_A028
     JR      Z, LOC_A718
@@ -5706,7 +5898,7 @@ LOC_A77E:
 RET
 
 BYTE_A783:
-	DB 000,064,128,016,032
+    DB 000,064,128,016,032
 
 SUB_A788:
     LD      A, ($7272)
@@ -5716,7 +5908,7 @@ SUB_A788:
     BIT     6, A
     JR      Z, LOCRET_A7DB
 LOC_A796:
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     LD      IX, $72B8
     JR      Z, LOC_A7A5
@@ -5753,12 +5945,12 @@ LOC_A7CB:
     LD      A, ($72BE)
     LD      C, A
     LD      A, 3
-    CALL    SUB_B629
+    CALL    PUTSPRITE
 LOCRET_A7DB:
 RET
 
 BYTE_A7DC:
-	DB 001,001,012,002,003,014,004,005,016,008,007,018,016,009,020,008,007,018,004,005,016,002,003,014
+    DB 001,001,012,002,003,014,004,005,016,008,007,018,016,009,020,008,007,018,004,005,016,002,003,014
 
 SUB_A7F4:
     LD      A, ($72C5)
@@ -5877,13 +6069,13 @@ LOCRET_A8C6:
 RET
 
 BYTE_A8C7:
-	DB 064,128,016,032
+    DB 064,128,016,032
 
 SUB_A8CB:
     CALL    SUB_9B4F
     LD      B, (IY+2)
     LD      C, (IY+1)
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      D, A
     CALL    SUB_B173
     LD      D, 1
@@ -5923,7 +6115,7 @@ LOC_A90D:
     LD      C, (IY+1)
     LD      A, ($72C5)
     ADD     A, 11H
-    CALL    SUB_B629
+    CALL    PUTSPRITE
 RET
 
 SUB_A921:
@@ -6007,7 +6199,7 @@ LOC_A992:
 RET
 
 SUB_A99C:
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_A9A1:
     BIT     7, (HL)
@@ -6023,7 +6215,7 @@ LOC_A9A1:
     LD      HL, SPRITE_NAME_TABLE
     LD      B, 50H
 LOC_A9C0:
-    LD      (HL), 0
+    LD      (HL), $D1   ;***
     INC     HL
     DJNZ    LOC_A9C0
     LD      A, 6
@@ -6033,7 +6225,7 @@ LOC_A9C0:
     XOR     A
     LD      ($72BC), A
     LD      ($72BB), A
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     BIT     1, (HL)
     JR      NZ, DEAL_WITH_EXTRA_MR_DO
     LD      ($72B8), A
@@ -6063,7 +6255,7 @@ LOC_AA06:
     AND     A
     JR      Z, LOC_AA06
     POP     AF
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_AA14:
     BIT     7, (HL)
@@ -6075,26 +6267,26 @@ LOC_AA14:
 RET
 
 SUB_AA25:
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_AA2A:
     BIT     7, (HL)
     JR      NZ, LOC_AA2A
-    LD      HL, CURRENT_LEVEL_RAM
+    LD      HL, CURRENT_LEVEL_P1
     LD      IX, $7278
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     JR      Z, LOC_AA43
-    LD      HL, $7275
+    LD      HL, CURRENT_LEVEL_P2
     LD      IX, $7279
 LOC_AA43:
     LD      (IX+0), 7
     INC     (HL)
     LD      A, (HL)
     CALL    SUB_B286
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     LD      DE, 3400H
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     JR      Z, LOC_AA5C
     LD      DE, 3600H
@@ -6106,7 +6298,7 @@ LOC_AA5C:
 RET
 
 SUB_AA69:
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_AA6E:
     BIT     7, (HL)
@@ -6116,14 +6308,14 @@ LOC_AA6E:
     JR      Z, LOC_AA7C
     LD      DE, 3600H
 LOC_AA7C:
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     LD      BC, 0D4H
     CALL    WRITE_VRAM
     LD      BC, 1E2H
     CALL    WRITE_REGISTER
     LD      IX, LIVES_LEFT_P1_RAM
     LD      IY, LIVES_LEFT_P2_RAM
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     BIT     1, (HL)
     JR      NZ, LOC_AABD
     DEC     (IX+0)
@@ -6168,7 +6360,7 @@ RET
 
 SUB_AADC:
     PUSH    AF
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_AAE2:
     BIT     7, (HL)
@@ -6184,7 +6376,7 @@ LOC_AAE2:
     LD      HL, SPRITE_NAME_TABLE
     LD      B, 50H
 LOC_AAFF:
-    LD      (HL), 0
+    LD      (HL), $D1   ;***
     INC     HL
     DJNZ    LOC_AAFF
     POP     AF
@@ -6210,7 +6402,7 @@ LOC_AB1E:
 RET
 
 SUB_AB28:
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_AB2D:
     BIT     7, (HL)
@@ -6222,7 +6414,7 @@ LOC_AB2D:
     LD      HL, SPRITE_NAME_TABLE
     LD      B, 50H
 LOC_AB40:
-    LD      (HL), 0
+    LD      (HL), $D1   ;***
     INC     HL
     DJNZ    LOC_AB40
     LD      A, 9
@@ -6261,7 +6453,7 @@ LOC_AB6C:
     CALL    TEST_SIGNAL
     AND     A
     JR      Z, LOC_AB6C
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_AB8F:
     BIT     7, (HL)
@@ -6278,7 +6470,7 @@ LOC_ABA5:
     XOR     A
     JR      LOCRET_ABB5
 LOC_ABA9:
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_ABAE:
     BIT     7, (HL)
@@ -6375,41 +6567,70 @@ LOC_AC2B:
 RET
 
 BYTE_AC2F:
-	DB 128,064,032,016,008,004,002,001
+    DB 128,064,032,016,008,004,002,001
 BYTE_AC37:
-	DB 127,191,223,239,247,251,253,254
+    DB 127,191,223,239,247,251,253,254
 
 SUB_AC3F:
+PEEKMAP:
+                        ; input B = Y,C = X, output IX -> byte in game map, D offset in game map + 1
+    LD      A,B
+    SUB     A,24        ; remove 3 lines of the upper scorebar
+    AND     $F0         ; same as Y/16 * 16
+    LD      D,A
+
+    LD      A,C
+    RRCA
+    RRCA
+    RRCA
+    RRCA
+    AND     $0F         ; same as X/16
+
+    ADD     A,D
+
     PUSH    BC
-    LD      D, 1
-    LD      A, B
-    SUB     18H
-LOC_AC45:
-    SUB     10H
-    JR      C, LOC_AC51
-    PUSH    AF
-    LD      A, D
-    ADD     A, 10H
-    LD      D, A
-    POP     AF
-    JR      LOC_AC45
-LOC_AC51:
-    LD      A, C
-LOC_AC52:
-    SUB     10H
-    JR      C, LOC_AC59
-    INC     D
-    JR      LOC_AC52
-LOC_AC59:
-    LD      A, D
-    DEC     A
-    LD      B, 0
-    LD      C, A
-    LD      IX, $718A
-    ADD     IX, BC
-    LD      A, D
+    LD      B,0
+    LD      C,A
+    LD      IX,LEVELMAP
+    ADD     IX,BC
     POP     BC
+
+    INC     A               ; odd (?) offeset fixed elsewhere in the code   ;***
+    LD      D,A
+                            ; IX  = LEVELMAP + ((Y-24)/16)*16+X/16
+                            ; A = D = ((Y-24)/16)*16+X/16 + 1
 RET
+;PEEKMAP:
+;    PUSH    BC
+;    LD      D, 1
+;    LD      A, B
+;    SUB     18H
+;LOC_AC45:
+;    SUB     10H
+;    JR      C, LOC_AC51
+;    PUSH    AF
+;    LD      A, D
+;    ADD     A, 10H
+;    LD      D, A
+;    POP     AF
+;    JR      LOC_AC45
+;LOC_AC51:
+;    LD      A, C
+;LOC_AC52:
+;    SUB     10H
+;    JR      C, LOC_AC59
+;    INC     D
+;    JR      LOC_AC52
+;LOC_AC59:
+;    LD      A, D
+;    DEC     A
+;    LD      B, 0
+;    LD      C, A
+;    LD      IX, LEVELMAP
+;    ADD     IX, BC
+;    LD      A, D
+;    POP     BC
+;RET
 
 DEAL_WITH_PLAYFIELD_MAP:
     DEC     A
@@ -6455,10 +6676,10 @@ DEAL_WITH_SPRITES:
     LD      IX, SPRITE_GENERATOR
     ADD     IX, BC
     AND     A
-	RL      C
-	RL      B
-	RL      C
-	RL      B
+    RL      C
+    RL      B
+    RL      C
+    RL      B
     ADD     IX, BC
     LD      A, (IX+0)
     AND     A
@@ -6533,7 +6754,7 @@ LOC_AD98:
     LD      C, 8
 LOC_AD9B:
     SRL     D
-	RL      E
+    RL      E
     DEC     C
     JR      NZ, LOC_AD9B
     LD      (IY+0), E
@@ -6554,9 +6775,9 @@ LOC_ADB4:
     LD      A, (HL)
     AND     D
     JR      Z, LOC_ADB9
-	SCF
+    SCF
 LOC_ADB9:
-	RL      E
+    RL      E
     INC     HL
     DJNZ    LOC_ADB4
     LD      (IY+0), E
@@ -6579,14 +6800,14 @@ LOC_ADD3:
     LD      A, (HL)
     AND     D
     JR      Z, LOC_ADD8
-	SCF
+    SCF
 LOC_ADD8:
-	RL      E
+    RL      E
     INC     HL
     DJNZ    LOC_ADD3
     LD      (IY+0), E
     INC     IY
-	RRC     D
+    RRC     D
     DEC     C
     JR      NZ, LOC_ADCF
     POP     HL
@@ -6608,7 +6829,7 @@ LOC_ADF6:
     JR      Z, LOC_ADFB
 SCF
 LOC_ADFB:
-	RL      E
+    RL      E
     DEC     HL
     DJNZ    LOC_ADF6
     LD      (IY+0), E
@@ -6633,14 +6854,14 @@ LOC_AE19:
     LD      A, (HL)
     AND     D
     JR      Z, LOC_AE1E
-	SCF
+    SCF
 LOC_AE1E:
-	RL      E
+    RL      E
     DEC     HL
     DJNZ    LOC_AE19
     LD      (IY+0), E
     INC     IY
-	RRC     D
+    RRC     D
     DEC     C
     JR      NZ, LOC_AE15
     POP     HL
@@ -6708,35 +6929,35 @@ LOC_AE76:
 LOCRET_AE87:
 RET
 
-LOC_AE88:
-    LD      IX, BYTE_AEAD
-    LD      B, 5
-LOOP_AE8E:
-    PUSH    BC
-    XOR     A
-    EX      DE, HL
-    LD      C, (IX+0)
-    LD      B, (IX+1)
-LOC_AE97:
-    AND     A
-    SBC     HL, BC
-    JR      C, LOC_AE9F
-    INC     A
-    JR      LOC_AE97
-LOC_AE9F:
-    ADD     HL, BC
-    EX      DE, HL
-    ADD     A, 0D8H
-    LD      (HL), A
-    INC     HL
-    INC     IX
-    INC     IX
-    POP     BC
-    DJNZ    LOOP_AE8E
-RET
+; LOC_AE88:
+    ; LD      IX, BYTE_AEAD
+    ; LD      B, 5
+; LOOP_AE8E:
+    ; PUSH    BC
+    ; XOR     A
+    ; EX      DE, HL
+    ; LD      C, (IX+0)
+    ; LD      B, (IX+1)
+; LOC_AE97:
+    ; AND     A
+    ; SBC     HL, BC
+    ; JR      C, LOC_AE9F
+    ; INC     A
+    ; JR      LOC_AE97
+; LOC_AE9F:
+    ; ADD     HL, BC
+    ; EX      DE, HL
+    ; ADD     A, 0D8H
+    ; LD      (HL), A
+    ; INC     HL
+    ; INC     IX
+    ; INC     IX
+    ; POP     BC
+    ; DJNZ    LOOP_AE8E
+; RET
 
-BYTE_AEAD:
-	DB 016,039,232,003,100,000,010,000,001,000
+;BYTE_AEAD:
+;   DB 016,039,232,003,100,000,010,000,001,000
 
 SUB_AEB7:
     LD      B, A
@@ -6784,7 +7005,7 @@ LOC_AEF1:
 LOC_AEF6:
     LD      C, A
     LD      E, 5
-    LD      IX, $722C
+    LD      IX, APPLEDATA
 LOC_AEFD:
     BIT     7, (IX+0)
     JR      Z, LOC_AF1A
@@ -6832,7 +7053,7 @@ LOC_AF48:
     SUB     6
 LOC_AF4A:
     LD      C, A
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      A, C
     AND     0FH
     CP      8
@@ -6948,7 +7169,7 @@ LOC_B006:
     ADD     A, 0CH
 LOC_B008:
     LD      C, A
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      E, 5
 LOC_B00F:
     BIT     7, (IX+0)
@@ -6982,7 +7203,7 @@ LOC_B035:
     LD      A, 11H
     SUB     E
     LD      D, 1
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     POP     IX
     POP     HL
     POP     DE
@@ -7125,7 +7346,7 @@ LOC_B128:
 RET
 
 SUB_B12D:
-    LD      IX, $722C
+    LD      IX, APPLEDATA
     LD      E, 5
 LOC_B133:
     BIT     7, (IX+0)
@@ -7171,7 +7392,7 @@ RET
 SUB_B173:
     LD      A, D
     PUSH    AF
-    LD      HL, $7245
+    LD      HL, ENEMYINTERACT
     CALL    SUB_AC0B
     JR      Z, LOC_B198
     POP     AF
@@ -7179,16 +7400,16 @@ SUB_B173:
     DEC     A
     LD      C, A
     LD      B, 0
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     ADD     HL, BC
     LD      A, (HL)
     AND     0FH
     CP      0FH
     JR      NZ, LOC_B198
     POP     AF
-    LD      HL, $7245
+    LD      HL, ENEMYINTERACT
     CALL    SUB_ABF6
-	SCF
+    SCF
     JR      LOCRET_B19A
 LOC_B198:
     POP     AF
@@ -7203,7 +7424,7 @@ DISPLAY_PLAY_FIELD_PARTS:
     DEC     A
     LD      C, A
     LD      B, 0
-    LD      IY, $718A
+    LD      IY, LEVELMAP
     ADD     IY, BC
     POP     AF
     PUSH    AF
@@ -7219,7 +7440,7 @@ DISPLAY_CHERRIES:
     PUSH    DE
     PUSH    IX
     PUSH    BC
-    LD      HL, $7245
+    LD      HL, ENEMYINTERACT
     CALL    SUB_AC0B
     POP     BC
     POP     IX
@@ -7230,11 +7451,11 @@ DISPLAY_CHERRIES:
     JR      PLAYFIELD_TO_VRAM
 DISPLAY_PLAYFIELD:
     PUSH    BC
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     JR      Z, LOC_B1E6
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_B1E6:
     CP      0BH
     JR      C, LOC_B1EE
@@ -7301,13 +7522,13 @@ LOC_B24E:
 RET
 
 TUNNEL_WALL_PATTERNS:
-	DB 001,016,004,002,128,001,002,016,008,064,001,031,004,001,032,008,128,001,008,002,032,064,004,000
+    DB 001,016,004,002,128,001,002,016,008,064,001,031,004,001,032,008,128,001,008,002,032,064,004,000
 TUNNEL_PATTERNS:
-	DB 000,000,000,000,000,093,092,090,000,095,094,091,000,089,088,000
+    DB 000,000,000,000,000,093,092,090,000,095,094,091,000,089,088,000
 CHERRIES_TXT:
-	DB 017,016,009,008
+    DB 017,016,009,008
 PLAYFIELD_PATTERNS:
-	DB 080,081,082,080,083,082,084,080,082,083
+    DB 080,081,082,080,083,082,084,080,082,083
 
 SUB_B286:
     CP      0BH
@@ -7316,12 +7537,12 @@ SUB_B286:
     JR      SUB_B286
 LOC_B28E:
     PUSH    AF
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     LD      (HL), 0
     LD      DE, $718B
     LD      BC, 9FH
     LDIR
-    LD      HL, $718A
+    LD      HL, LEVELMAP
     CALL    DEAL_WITH_PLAYFIELD_MAP
     POP     AF
     DEC     A
@@ -7333,7 +7554,7 @@ LOC_B28E:
     ADD     IX, BC
     LD      L, (IX+0)
     LD      H, (IX+1)
-    LD      DE, $7245
+    LD      DE, ENEMYINTERACT
     LD      BC, 14H
     LDIR
     CALL    RAND_GEN
@@ -7347,7 +7568,7 @@ LOC_B2CC:
     LD      L, (IX+0)
     LD      H, (IX+1)
     LD      B, 5
-    LD      IY, $722C
+    LD      IY, APPLEDATA
 LOOP_B2DB:
     LD      A, (HL)
     PUSH    HL
@@ -7368,7 +7589,7 @@ RET
 SUB_B2FA:
     PUSH    IY
     PUSH    HL
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      D, A
     LD      E, 0
     LD      A, C
@@ -7386,7 +7607,7 @@ LOC_B31D:
     PUSH    IX
     PUSH    DE
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     DE
     POP     IX
@@ -7406,7 +7627,7 @@ LOC_B342:
     PUSH    DE
     PUSH    IX
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     IX
     POP     DE
@@ -7423,7 +7644,7 @@ LOC_B342:
 LOC_B360:
     SET     6, (IX+0)
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     DE
     POP     IX
@@ -7460,7 +7681,7 @@ RET
 SUB_B39D:
     PUSH    IY
     PUSH    HL
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      D, A
     LD      E, 0
     LD      A, C
@@ -7474,7 +7695,7 @@ LOC_B3B7:
     PUSH    DE
     PUSH    IX
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     IX
     POP     DE
@@ -7495,7 +7716,7 @@ LOC_B3B7:
     LD      (IX+0), A
 LOC_B3E0:
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     DE
     POP     IX
@@ -7512,7 +7733,7 @@ LOC_B3EC:
     SET     2, (IX+0)
 LOC_B403:
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     PUSH    IX
     PUSH    DE
     CALL    SUB_ABE1
@@ -7551,7 +7772,7 @@ RET
 SUB_B43F:
     PUSH    IY
     PUSH    HL
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      D, A
     LD      E, 0
     LD      A, B
@@ -7566,7 +7787,7 @@ LOC_B45B:
     PUSH    DE
     PUSH    IX
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     IX
     POP     DE
@@ -7587,7 +7808,7 @@ LOC_B45B:
 LOC_B485:
     LD      A, D
     SUB     10H
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     DE
     POP     IX
@@ -7606,7 +7827,7 @@ LOC_B4A9:
     PUSH    IX
     PUSH    DE
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     DE
     POP     IX
@@ -7644,7 +7865,7 @@ RET
 SUB_B4E9:
     PUSH    IY
     PUSH    HL
-    CALL    SUB_AC3F
+    CALL    PEEKMAP
     LD      D, A
     LD      A, B
     AND     0FH
@@ -7662,7 +7883,7 @@ LOC_B50A:
     PUSH    DE
     PUSH    IX
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     IX
     POP     DE
@@ -7679,7 +7900,7 @@ LOC_B50A:
 LOC_B52D:
     LD      A, D
     SUB     10H
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     DE
     POP     IX
@@ -7698,7 +7919,7 @@ LOC_B551:
     PUSH    IX
     PUSH    DE
     LD      A, D
-    LD      HL, $7259
+    LD      HL, ENEMYINTERACT2
     CALL    SUB_ABE1
     POP     DE
     POP     IX
@@ -7750,38 +7971,80 @@ LOC_B5A1:
     EX      DE, HL
 RET
 
-PATTERNS_TO_VRAM:
-    ADD     A, A
-    ADD     A, A
-    LD      C, A
-    LD      B, 0
-    LD      HL, BYTE_B5D4
-    ADD     HL, BC
-    LD      E, (HL)
+; convert binary score in decimal and print it
+
+PRINT_SCORE:            ; A=0 for P1, A=1 for P2
+    ADD     A,A
+    ADD     A,A
+    LD      C,A
+    LD      B,0
+    LD      HL,BYTE_B5D4
+    ADD     HL,BC
+    LD      E,(HL)
     INC     HL
-    LD      D, (HL)
+    LD      D,(HL)
     INC     HL
     PUSH    HL
-    EX      DE, HL
-    LD      E, (HL)
+    EX      DE,HL
+    LD      E,(HL)
     INC     HL
-    LD      D, (HL)
-    LD      HL, $72E7
-    CALL    LOC_AE88
-    LD      A, 0D8H
-    LD      ($72EC), A
-    LD      A, 2
+    LD      D,(HL)      ; DE = score of p1 or p2
+    LD      HL,SCRATCH
+;   CALL    LOC_AE88
+;LOC_AE88:
+    LD      IX,BYTE_AEAD
+    LD      B,5
+LOOP_AE8E:
+    PUSH    BC
+    XOR     A
+    EX      DE,HL
+    LD      C,(IX+0)
+    LD      B,(IX+1)    ; compare with current power of 10 
+LOC_AE97:
+    AND     A
+    SBC     HL,BC
+    JR      C,LOC_AE9F
+    INC     A           ; decimal digit
+    JR      LOC_AE97
+LOC_AE9F:
+    ADD     HL,BC
+    EX      DE,HL
+    ADD     A,0D8H      ; offset for "0"
+    LD      (HL),A
+    INC     HL
+    INC     IX
+    INC     IX
+    POP     BC
+    DJNZ    LOOP_AE8E
+; ret   (was a subroutine)
+    LD      A,0D8H
+    LD      (SCRATCH+5),A   ; last fake "0"
+    LD      A,2
     POP     HL
-    LD      E, (HL)
+    LD      E,(HL)
     INC     HL
-    LD      D, (HL)
-    LD      HL, $72E7
-    LD      IY, 6
+    LD      D,(HL)
+    LD      HL,SCRATCH
+    LD      IY,6            ; print 6 digits
     CALL    PUT_VRAM
 RET
 
+;BYTE_B5D4:
+;   DB 125,114,036,000,127,114,068,000,000
+
 BYTE_B5D4:
-	DB 125,114,036,000,127,114,068,000,000
+    DW SCORE_P1_RAM
+    DW          36  ; SCREEN POSITION SCORE P1
+    DW SCORE_P2_RAM
+    DW          68  ; SCREEN POSITION SCORE P2
+;   DB          0   ; ?? unused?
+
+BYTE_AEAD:
+    DW 10000
+    DW  1000
+    DW   100
+    DW    10
+    DW     1
 
 SUB_B5DD:
     LD      A, B
@@ -7808,7 +8071,7 @@ RET
 SUB_B601:
     LD      IX, SCORE_P1_RAM
     LD      C, 80H
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
     JR      Z, LOC_B614
     LD      IX, SCORE_P2_RAM
@@ -7825,71 +8088,129 @@ LOC_B614:
 
 RET
 
+
 SUB_B629:
-    LD      IX, $72DF
-    BIT     7, A
-    JR      Z, LOC_B637
-    LD      IX, $72E7
-    AND     7FH
-LOC_B637:
-    PUSH    AF
-    PUSH    DE
-    ADD     A, A
-    LD      E, A
-    LD      D, 0
-    LD      HL, OFF_B691
-    ADD     HL, DE
-    LD      E, (HL)
-    INC     HL
-    LD      D, (HL)
-    EX      DE, HL
-    POP     DE
-    LD      A, D
-    ADD     A, A
-    LD      E, A
-    LD      D, 0
-    ADD     HL, DE
-    LD      A, B
-    SUB     8
-    JR      NC, LOC_B655
-    LD      E, 1
-    ADD     A, 8
-LOC_B655:
-    LD      (IX+0), A
-    LD      A, C
-    SUB     8
-    LD      (IX+1), A
-    LD      A, (HL)
-    LD      (IX+2), A
-    INC     HL
-    LD      A, (HL)
-    BIT     0, E
-    JR      Z, LOC_B66A
-    SET     7, A
-LOC_B66A:
-    LD      (IX+3), A
-    LD      A, ($726E)
-    SET     3, A
-    LD      ($726E), A
-    POP     AF
-    ADD     A, A
-    ADD     A, A
-    LD      E, A
-    LD      D, 0
-    LD      HL, SPRITE_NAME_TABLE
-    ADD     HL, DE
-    EX      DE, HL
-    PUSH    IX
-    POP     HL
-    LD      BC, 4
-    LDIR
-    LD      A, ($726E)
-    RES     3, A
-    LD      ($726E), A
+PUTSPRITE:      ; B=Y, C=X, A = OBJECT/SAT Position, D=Frame
+        PUSH    DE          ; Save FRAME NUMBER in D
+
+        AND     7FH         ; SAT position
+        ADD     A,A
+
+        LD      E,A
+        LD      D,0
+        LD      HL,SPR_OBJ_ATTRB            ; frame and color table (pointer)
+        ADD     HL,DE
+
+        ADD     A,A
+        LD      E,A
+;       LD      D,0             ; already 0
+        LD      IX,SPRITE_NAME_TABLE
+        ADD     IX,DE
+
+        LD      A,(HL)
+        INC     HL
+        LD      H,(HL)
+        LD      L,A             ; HL -> frame list
+
+        POP     AF              ; restore frame number in A
+        ADD     A,A
+        LD      E,A
+        LD      D,0
+        ADD     HL,DE               ; HL -> current frame
+
+        LD      A,(GAMECONTROL)     ; stop sprite update
+        SET     3,A
+        LD      (GAMECONTROL),A
+
+        LD      A,B
+        SUB     8
+;       JR      NC,.1
+;       LD      A,$D1                   ; remove if Y<8 (i.e. partially offscreen - fix glitch)
+;.1:
+        LD      (IX+0),A                ; Y
+        LD      A,C
+        SUB     8
+        LD      (IX+1),A                ; X
+        LD      A,(HL)
+        LD      (IX+2),A                ; FRAME
+        INC     HL
+        LD      A,(HL)
+        AND     A
+        JR      NZ,.2
+        LD      (IX+0),$D1              ; remove if transparent
+.2:     LD      (IX+3),A                ; COLOR
+
+        LD      A,(GAMECONTROL)     ; enable sprite update
+        RES     3,A
+        LD      (GAMECONTROL),A
 RET
 
+; SUB_B629:
+    ; LD      IX, $72DF
+    ; BIT     7, A
+    ; JR      Z, LOC_B637
+    ; LD      IX, $72E7
+    ; AND     7FH
+; LOC_B637:
+    ; PUSH    AF
+    ; PUSH    DE
+    ; ADD     A, A
+    ; LD      E, A
+    ; LD      D, 0
+    ; LD      HL, OFF_B691
+    ; ADD     HL, DE
+    ; LD      E, (HL)
+    ; INC     HL
+    ; LD      D, (HL)
+    ; EX      DE, HL
+    ; POP     DE
+    ; LD      A, D
+    ; ADD     A, A
+    ; LD      E, A
+    ; LD      D, 0
+    ; ADD     HL, DE
+    ; LD      A, B
+    ; SUB     8
+    ; JR      NC, LOC_B655
+    ; LD      E, 1
+    ; ADD     A, 8
+; LOC_B655:
+    ; LD      (IX+0), A
+    ; LD      A, C
+    ; SUB     8
+    ; LD      (IX+1), A
+    ; LD      A, (HL)
+    ; LD      (IX+2), A
+    ; INC     HL
+    ; LD      A, (HL)
+    ; BIT     0, E
+    ; JR      Z, LOC_B66A
+    ; SET     7, A
+; LOC_B66A:
+    ; LD      (IX+3), A
+    ; LD      A, (GAMECONTROL)
+    ; SET     3, A
+    ; LD      (GAMECONTROL), A
+    ; POP     AF
+    ; ADD     A, A
+    ; ADD     A, A
+    ; LD      E, A
+    ; LD      D, 0
+    ; LD      HL, SPRITE_NAME_TABLE
+    ; ADD     HL, DE
+    ; EX      DE, HL
+    ; PUSH    IX
+    ; POP     HL
+    ; LD      BC, 4
+    ; LDIR
+    ; LD      A, (GAMECONTROL)
+    ; RES     3, A
+    ; LD      (GAMECONTROL), A
+; RET
+
+SPR_OBJ_ATTRB:          ; Sprite frame and color data
 OFF_B691:
-	DW BYTE_B6C3
+    DW BYTE_B6C3
     DW BYTE_B6C7
     DW BYTE_B6CB
     DW BYTE_B6CF
@@ -7911,24 +8232,24 @@ OFF_B691:
     DW BYTE_B761
     DB 000,000,000,000,000,000,000,000,000,000
 BYTE_B6C3:
-	DB 000,000,184,010
+    DB 000,000,184,010
 BYTE_B6C7:
-	DB 176,015,148,015
+    DB 176,015,148,015
 BYTE_B6CB:
-	DB 180,003,160,003
+    DB 180,003,160,003
 BYTE_B6CF:
-	DB 000,000,096,011,100,011,104,011,108,011,112,011,116,011,120,011,124,011,128,011,132,011
+    DB 000,000,096,011,100,011,104,011,108,011,112,011,116,011,120,011,124,011,128,011,132,011
     DB 148,011,096,008,100,008,104,008,108,008,112,008,116,008,120,008,124,008,128,008,132,008
 BYTE_B6FB:
-	DB 000,000,156,010,192,010,196,010,200,010,204,010,208,010,212,010
+    DB 000,000,156,010,192,010,196,010,200,010,204,010,208,010,212,010
 BYTE_B70B:
-	DB 000,000,000,013,004,013,008,013,012,013,016,013,020,013,024,013,028,013,032,013,036,013,040,013,044,013
+    DB 000,000,000,013,004,013,008,013,012,013,016,013,020,013,024,013,028,013,032,013,036,013,040,013,044,013
     DB 000,007,004,007,008,007,012,007,016,007,020,007,024,007,028,007,032,007,036,007,040,007,044,007,048,015
     DB 052,015,056,015,060,015,064,015,068,015,072,015,076,015,080,015,084,015,088,015,092,015,148,013
 BYTE_B757:
-	DB 000,000,136,008,140,008,144,008,152,015
+    DB 000,000,136,008,140,008,144,008,152,015
 BYTE_B761:
-	DB 000,000,224,005,228,005,232,005,236,005,148,005
+    DB 000,000,224,005,228,005,232,005,236,005,148,005
 
 SUB_B76D:
     LD      A, 40H
@@ -7954,7 +8275,7 @@ LOC_B781:
     ADD     HL, BC
     LD      B, (HL)
     LD      HL, $72B8
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     AND     3
     CP      3
     JR      NZ, LOC_B7AA
@@ -7976,7 +8297,7 @@ LOC_B7B4:
 RET
 
 BYTE_B7BC:
-	DB 001,002,004,008,016,008,004,002
+    DB 001,002,004,008,016,008,004,002
 
 SUB_B7C4:
     PUSH    HL
@@ -7989,9 +8310,9 @@ SUB_B7C4:
     CALL    SUB_B7EF
     ADD     A, 5
     LD      D, 0
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     LD      HL, $7278
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     AND     3
     CP      3
     JR      NZ, LOC_B7E7
@@ -8068,10 +8389,10 @@ LOC_B850:
     SBC     HL, BC
     JR      NZ, LOC_B850
 LOC_B856:
-    LD      BC, 808H
+    LD      BC, $DA08   ;808H
     LD      A, D
     LD      D, 0
-    CALL    SUB_B629
+    CALL    PUTSPRITE
     LD      IX, $72C7
     LD      B, 3
 LOC_B865:
@@ -8153,7 +8474,7 @@ RET
 
 SUB_B8F7:
     PUSH    IY
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_B8FE:
     BIT     7, (HL)
@@ -8169,11 +8490,11 @@ LOC_B914:
     LD      A, L
     OR      H
     JR      NZ, LOC_B914
-    LD      A, ($726E)
+    LD      A, (GAMECONTROL)
     BIT     1, A
-    LD      A, (CURRENT_LEVEL_RAM)
+    LD      A, (CURRENT_LEVEL_P1)
     JR      Z, LOC_B926
-    LD      A, ($7275)
+    LD      A, (CURRENT_LEVEL_P2)
 LOC_B926:
     CP      0BH
     JR      C, LOC_B92E
@@ -8200,7 +8521,7 @@ PLAYFIELD_COLOR_FLASH_EXTRA:
     DB 000,025,137,144,128,240,240,160,160,128,153,144,000
 
 EXTRA_BEHAVIOR:
-	DW PHASE_01_EX
+    DW PHASE_01_EX
     DW PHASE_02_EX
     DW PHASE_03_EX
     DW PHASE_04_EX
@@ -8232,7 +8553,7 @@ PHASE_10_EX:
     DB 025,027,036,076,083,105
 
 APPLE_PLACEMENT_TABLE:
-	DW APPLES_PHASE_01
+    DW APPLES_PHASE_01
     DW APPLES_PHASE_02
     DW APPLES_PHASE_03
     DW APPLES_PHASE_04
@@ -8264,7 +8585,7 @@ APPLES_PHASE_10:
     DB 024,026,035,045,071,092
 
 CHERRY_PLACEMENT_TABLE:
-	DW CHERRIES_PHASE_01
+    DW CHERRIES_PHASE_01
     DW CHERRIES_PHASE_02
     DW CHERRIES_PHASE_03
     DW CHERRIES_PHASE_04
@@ -8296,7 +8617,7 @@ CHERRIES_PHASE_10:
     DB 000,000,000,000,000,240,060,240,060,012,030,012,030,012,003,204,003,192,000,000
 
 PLAYFIELD_MAP:
-	DW PHASE_01_MAP
+    DW PHASE_01_MAP
     DW PHASE_02_MAP
     DW PHASE_03_MAP
     DW PHASE_04_MAP
@@ -8347,10 +8668,10 @@ PHASE_10_MAP:
     DB 000,000,095,175,001,000,008,095,207,239,159,001,000,003,095,001,207,010,159,000,000,002,000
 
 BYTE_BE21:
-	DB 033,000,010,000,110,001,136,001,136,001,072,001,102,001,102,001,106,001,110,001,110,001,110,001,110,001,110,001,065,000,000,000,000,000,000,000,000,000,000,000
+    DB 033,000,010,000,110,001,136,001,136,001,072,001,102,001,102,001,106,001,110,001,110,001,110,001,110,001,110,001,065,000,000,000,000,000,000,000,000,000,000,000
 
 PLAYFIELD_TABLE:
-	DW P1ST_PHASE_LEVEL_GEN
+    DW P1ST_PHASE_LEVEL_GEN
     DW EXTRA_BORDER_GEN
     DW BADGUY_OUTLINE_GEN
     DW GET_READY_P1_GEN
@@ -8368,39 +8689,39 @@ PLAYFIELD_TABLE:
 ;    DB 000,000,000,000,000,000,000,000,000,000
 
 P1ST_PHASE_LEVEL_GEN:
-	DB 066,067,068,254,023,241,233,255
+    DB 066,067,068,254,023,241,233,255
 EXTRA_BORDER_GEN:
-	DB 058,253,009,061,063,254,021,059,254,009,064,254,021,060,253,009,062,065,255
+    DB 058,253,009,061,063,254,021,059,254,009,064,254,021,060,253,009,062,065,255
 BADGUY_OUTLINE_GEN:
-	DB 112,114,254,030,113,115,255
+    DB 112,114,254,030,113,115,255
 GET_READY_P1_GEN:
-	DB 232,230,245,000,243,230,226,229,250,000,241,237,226,250,230,243,000,217,255
+    DB 232,230,245,000,243,230,226,229,250,000,241,237,226,250,230,243,000,217,255
 GET_READY_P2_GEN:
-	DB 232,230,245,000,243,230,226,229,250,000,241,237,226,250,230,243,000,218,255
+    DB 232,230,245,000,243,230,226,229,250,000,241,237,226,250,230,243,000,218,255
 WIN_EXTRA_GEN:
-	DB 228,240,239,232,243,226,245,246,237,226,245,234,240,239,244,000,253,001,255,254,076,250,240,246,000,248
-	DB 234,239,000,226,239,000,230,249,245,243,226,000,238,243,253,001,254,000,229,240,000,253,001,255,255
+    DB 228,240,239,232,243,226,245,246,237,226,245,234,240,239,244,000,253,001,255,254,076,250,240,246,000,248
+    DB 234,239,000,226,239,000,230,249,245,243,226,000,238,243,253,001,254,000,229,240,000,253,001,255,255
 GAME_OVER_P1_GEN:
-	DB 253,020,000,254,012,000,232,226,238,230,000,240,247,230,243,000,241,237,226,250,230,243,000,217,000,254,012,253,020,000,255
+    DB 253,020,000,254,012,000,232,226,238,230,000,240,247,230,243,000,241,237,226,250,230,243,000,217,000,254,012,253,020,000,255
 GAME_OVER_P2_GEN:
-	DB 253,020,000,254,012,000,232,226,238,230,000,240,247,230,243,000,241,237,226,250,230,243,000,218,000,254,012,253,020,000,255
+    DB 253,020,000,254,012,000,232,226,238,230,000,240,247,230,243,000,241,237,226,250,230,243,000,218,000,254,012,253,020,000,255
 GAME_OVER_GEN:
-	DB 253,011,000,254,021,000,232,226,238,230,000,240,247,230,243,000,254,021,253,011,000,255
+    DB 253,011,000,254,021,000,232,226,238,230,000,240,247,230,243,000,254,021,253,011,000,255
 SUNDAE_GEN:
-	DB 042,043,254,030,056,057,255
+    DB 042,043,254,030,056,057,255
 WHEAT_SQUARE_GEN:
-	DB 032,033,254,030,034,035,255
+    DB 032,033,254,030,034,035,255
 GUMDROP_GEN:
-	DB 024,025,254,030,026,027,255
+    DB 024,025,254,030,026,027,255
 PIE_SLICE_GEN:
-	DB 044,045,254,030,036,037,255
+    DB 044,045,254,030,036,037,255
 BLANK_SPACE_GEN:
-	DB 000,000,254,030,000,000,255
+    DB 000,000,254,030,000,000,255
 P2ND_GEN:
-	DB 069,070,071,255
+    DB 069,070,071,255
 
 PLAYFIELD_COLORS:
-	DW PHASE_01_COLORS
+    DW PHASE_01_COLORS
     DW PHASE_02_COLORS
     DW PHASE_03_COLORS
     DW PHASE_04_COLORS
@@ -8411,28 +8732,28 @@ PLAYFIELD_COLORS:
     DW PHASE_09_COLORS
     DW PHASE_10_COLORS
 PHASE_01_COLORS:
-	DB 000,028,140,144,128,240,240,160,160,128,202,192,192,192,128,224,000,000,000,000,000,000,000,000,000,000,000,240,240,240,240,240
+    DB 000,028,140,144,128,240,240,160,160,128,202,192,192,192,128,224,000,000,000,000,000,000,000,000,000,000,000,240,240,240,240,240
 PHASE_02_COLORS:
-	DB 000,020,132,144,128,240,240,160,160,128,069,064
+    DB 000,020,132,144,128,240,240,160,160,128,069,064
 PHASE_03_COLORS:
-	DB 000,026,138,144,128,240,240,160,160,128,202,160
+    DB 000,026,138,144,128,240,240,160,160,128,202,160
 PHASE_04_COLORS:
-	DB 000,029,141,144,128,240,240,160,160,128,209,208
+    DB 000,029,141,144,128,240,240,160,160,128,209,208
 PHASE_05_COLORS:
-	DB 000,021,133,144,128,240,240,160,160,128,165,080
+    DB 000,021,133,144,128,240,240,160,160,128,165,080
 PHASE_06_COLORS:
-	DB 000,027,139,144,128,240,240,160,160,128,155,176
+    DB 000,027,139,144,128,240,240,160,160,128,155,176
 PHASE_07_COLORS:
-	DB 000,028,140,144,128,240,240,160,160,128,060,192
+    DB 000,028,140,144,128,240,240,160,160,128,060,192
 PHASE_08_COLORS:
-	DB 000,023,135,144,128,240,240,160,160,128,116,112
+    DB 000,023,135,144,128,240,240,160,160,128,116,112
 PHASE_09_COLORS:
-	DB 000,020,132,144,128,240,240,160,160,128,180,064
+    DB 000,020,132,144,128,240,240,160,160,128,180,064
 PHASE_10_COLORS:
-	DB 000,028,140,144,128,240,240,160,160,128,220,192
+    DB 000,028,140,144,128,240,240,160,160,128,220,192
 
 BADGUY_BEHAVIOR:
-	DW PHASE_01_BGB
+    DW PHASE_01_BGB
     DW PHASE_02_BGB
     DW PHASE_03_BGB
     DW PHASE_04_BGB
@@ -8443,30 +8764,30 @@ BADGUY_BEHAVIOR:
     DW PHASE_09_BGB
     DW PHASE_10_BGB
 PHASE_01_BGB:
-	DB 006,072,088,104,120,136,152
+    DB 006,072,088,104,120,136,152
 PHASE_02_BGB:
-	DB 018,072,088,087,086,085,101,100,116,115,114,130,146,147,148,149,150,151,152
+    DB 018,072,088,087,086,085,101,100,116,115,114,130,146,147,148,149,150,151,152
 PHASE_03_BGB:
-	DB 020,072,088,089,090,091,092,093,094,095,111,127,143,142,158,157,156,155,154,153,152
+    DB 020,072,088,089,090,091,092,093,094,095,111,127,143,142,158,157,156,155,154,153,152
 PHASE_04_BGB:
-	DB 028,072,071,070,069,068,084,083,082,098,114,115,116,117,118,119,120,121,122,123,124,125,141,157,156,155,154,153,152
+    DB 028,072,071,070,069,068,084,083,082,098,114,115,116,117,118,119,120,121,122,123,124,125,141,157,156,155,154,153,152
 PHASE_05_BGB:
-	DB 020,072,073,074,075,076,077,078,094,095,111,127,143,142,158,157,156,155,154,153,152
+    DB 020,072,073,074,075,076,077,078,094,095,111,127,143,142,158,157,156,155,154,153,152
 PHASE_06_BGB:
-	DB 020,072,088,089,090,091,092,093,094,095,111,127,143,142,158,157,156,155,154,153,152
+    DB 020,072,088,089,090,091,092,093,094,095,111,127,143,142,158,157,156,155,154,153,152
 PHASE_07_BGB:
-	DB 006,072,088,104,120,136,152
+    DB 006,072,088,104,120,136,152
 PHASE_08_BGB:
-	DB 020,072,088,089,090,091,092,093,094,110,111,127,143,142,158,157,156,155,154,153,152
+    DB 020,072,088,089,090,091,092,093,094,110,111,127,143,142,158,157,156,155,154,153,152
 PHASE_09_BGB:
-	DB 020,072,088,089,090,091,092,093,094,095,111,127,143,142,158,157,156,155,154,153,152
+    DB 020,072,088,089,090,091,092,093,094,095,111,127,143,142,158,157,156,155,154,153,152
 PHASE_10_BGB:
-	DB 018,072,073,089,090,106,107,123,124,140,141,142,158,157,156,155,154,153,152,000
+    DB 018,072,073,089,090,106,107,123,124,140,141,142,158,157,156,155,154,153,152,000
 
 
 
 SPRITE_GENERATOR:
-	DB 000,000,000
+    DB 000,000,000
     DW BADGUY_RIGHT_WALK_01_PAT
     DB 000,004,000
     DW BADGUY_RIGHT_WALK_02_PAT
@@ -8693,74 +9014,74 @@ BYTE_C298:      DB 234,235,232,233
 BYTE_C29C:      DB 238,239,236,237
 
 MR_DO_WALK_RIGHT_01_PAT:
-	DB 000,000,031,063,039,003,001,001
+    DB 000,000,031,063,039,003,001,001
     DB 003,007,007,003,005,006,000,000
     DB 000,000,224,224,240,216,216,240
     DB 192,248,248,192,224,248,000,000
 MR_DO_WALK_RIGHT_02_PAT:
-	DB 000,000,007,031,063,035,001,001
+    DB 000,000,007,031,063,035,001,001
     DB 031,007,003,063,063,032,000,000
     DB 000,000,224,224,240,216,216,240
     DB 192,252,252,224,240,124,000,000
 MR_DO_PUSH_RIGHT_01_PAT:
-	DB 000,000,031,063,039,003,001,001
+    DB 000,000,031,063,039,003,001,001
     DB 003,007,007,003,005,006,000,000
     DB 000,000,224,224,240,216,216,240
     DB 196,252,252,192,224,248,000,000
 MR_DO_PUSH_RIGHT_02_PAT:
-	DB 000,000,007,031,063,035,001,001
-	DB 001,003,003,063,063,032,000,000
-	DB 000,000,224,224,240,216,216,240
-	DB 196,252,252,192,240,124,000,000
+    DB 000,000,007,031,063,035,001,001
+    DB 001,003,003,063,063,032,000,000
+    DB 000,000,224,224,240,216,216,240
+    DB 196,252,252,192,240,124,000,000
 
 MR_DO_UNUSED_PUSH_ANIM_01_PAT:
-	DB 000,000,003,007,009,013,007,003
+    DB 000,000,003,007,009,013,007,003
     DB 007,014,031,031,018,031,000,000
     DB 000,000,192,224,144,176,224,200
     DB 248,056,192,192,000,128,000,000
 MR_DO_UNUSED_PUSH_ANIM_02_PAT:
-	DB 000,000,003,007,009,013,007,003
+    DB 000,000,003,007,009,013,007,003
     DB 003,006,015,015,015,001,000,000
     DB 000,000,192,224,144,176,224,200
     DB 248,056,192,192,000,192,000,000
 MR_DO_UNUSED_PUSH_ANIM_03_PAT:
-	DB 000,000,003,007,009,013,007,003
+    DB 000,000,003,007,009,013,007,003
     DB 007,014,031,031,019,028,000,000
     DB 000,000,192,224,144,176,224,200
     DB 248,056,128,128,128,000,000,000
 
 DIGGER_RIGHT_01_PAT:
-	DB 000,000,007,015,019,007,031,047
+    DB 000,000,007,015,019,007,031,047
     DB 014,031,063,031,025,044,000,000
     DB 000,000,192,224,056,056,120,224
     DB 252,124,196,192,192,240,000,000
 DIGGER_RIGHT_02_PAT:
-	DB 000,000,007,015,019,007,031,047
+    DB 000,000,007,015,019,007,031,047
     DB 015,031,062,031,031,047,000,000
     DB 000,000,192,224,060,124,060,224
     DB 192,192,252,124,164,192,000,000
 BADGUY_RIGHT_WALK_01_PAT:
-	DB 000,000,031,063,063,063,063,063
+    DB 000,000,031,063,063,063,063,063
     DB 007,014,063,031,012,012,000,000
     DB 000,000,192,192,056,120,056,224
     DB 248,252,096,224,192,240,000,000
 BADGUY_RIGHT_WALK_02_PAT:
-	DB 000,000,031,063,063,063,063,031
+    DB 000,000,031,063,063,063,063,031
     DB 007,015,029,062,031,012,000,000
     DB 000,000,192,224,056,056,120,224
     DB 192,240,248,000,160,192,000,000
 CHOMPER_RIGHT_CLOSED_PAT:
-	DB 000,000,000,000,000,006,013,031
+    DB 000,000,000,000,000,006,013,031
     DB 063,054,063,063,051,033,000,000
     DB 000,000,000,000,000,000,000,248
     DB 252,204,252,252,204,132,000,000
 CHOMPER_RIGHT_OPEN_PAT:
-	DB 000,000,006,013,029,063,060,048
+    DB 000,000,006,013,029,063,060,048
     DB 048,049,063,063,054,034,000,000
     DB 000,000,000,000,248,252,204,000
     DB 000,152,252,252,108,068,000,000
 EXTRA_SPRITE_PAT:
-	DB 000,000,015,031,056,059,056,059
+    DB 000,000,015,031,056,059,056,059
     DB 059,056,031,015,002,014,000,000
     DB 000,000,240,248,060,252,124,252
     DB 252,060,248,240,112,000,000,000
@@ -8825,7 +9146,7 @@ EXTRA_SPRITE_PAT:
     DB 000,000,000,000,000,000,000,128
     DB 128,000,000,000,000,000,000,000
 BALL_SPRITE_PAT:
-	DB 000,000,000,000,000,000,001,002
+    DB 000,000,000,000,000,000,001,002
     DB 001,000,000,000,000,000,000,000
     DB 000,000,000,000,000,000,000,128
     DB 000,000,000,000,000,000,000,000
@@ -8851,7 +9172,7 @@ BALL_SPRITE_PAT:
     DB 000,000,000,000,008,000,000,000
 
 VARIOUTS_PATTERNS:
-	DB 001,000
+    DB 001,000
     DW BLANK_LINE_PAT
     DB 002,008
     DW CHERRY_TOP_PAT
@@ -8877,27 +9198,27 @@ VARIOUTS_PATTERNS:
     DW HUD_PATS_01
     DB 000
 BLANK_LINE_PAT:
-	DB 000,000,000,000,000,000,000,000
+    DB 000,000,000,000,000,000,000,000
 CHERRY_TOP_PAT:
-	DB 000,000,000,000,000,000,001,002
+    DB 000,000,000,000,000,000,001,002
     DB 000,000,000,048,072,136,008,008
 CHERRY_BOTTOM_PAT:
-	DB 004,014,027,029,031,014,000,000
+    DB 004,014,027,029,031,014,000,000
     DB 016,056,108,116,124,056,000,000
 GUMDROP_PAT:
-	DB 000,000,001,003,007,014,028,029
+    DB 000,000,001,003,007,014,028,029
     DB 000,000,128,192,224,240,248,248
     DB 057,059,031,015,003,000,000,000
     DB 252,252,248,240,192,000,000,000
 WHEAT_SQUARE_PAT:
-	DB 000,000,042,063,022,063,023,063
+    DB 000,000,042,063,022,063,023,063
     DB 000,000,192,128,192,128,108,248
     DB 031,053,003,001,003,003,000,000
     DB 108,248,252,104,252,084,000,000
     DB 063,062,049,015,063,056,000,000
     DB 240,008,248,248,000,000,000,000
 BADGUY_OUTLINE_PAT:
-	DB 000,000,031,032,032,032,032,024
+    DB 000,000,031,032,032,032,032,024
     DB 004,008,008,016,008,015,000,000
     DB 000,000,192,032,024,072,008,016
     DB 032,056,012,016,032,240,000,000
@@ -8935,19 +9256,19 @@ HUD_PATS_02:
     DB 047,040,040,168,104,040,047,000
     DB 000,128,128,128,128,128,000,000
 EXTRA_PATS:
-	DB 254,254,192,248,248,192,254,254
+    DB 254,254,192,248,248,192,254,254
     DB 130,198,108,056,056,108,198,130
     DB 252,252,048,048,048,048,048,048
     DB 248,252,198,198,254,240,200,204
     DB 120,124,204,252,254,198,198,198
 PLAYFIELD_PATS:
-	DB 030,030,255,255,225,225,255,255
+    DB 030,030,255,255,225,225,255,255
     DB 241,227,199,143,031,062,124,248
     DB 129,066,036,024,024,036,066,129
     DB 051,102,204,136,204,102,051,017
     DB 195,102,060,000,195,102,060,000
 HALLWAY_BORDER_PAT:
-	DB 192,192,128,128,192,192,128,128
+    DB 192,192,128,128,192,192,128,128
     DB 001,001,003,003,001,001,003,003
     DB 255,204,000,000,000,000,000,000
     DB 000,000,000,000,000,000,051,255
@@ -9232,7 +9553,7 @@ BACKGROUND_TUNE_P2:
     DB 170,128,226,128,007,163,128,214,128,010,170,128,190,128,007,163,128,029,129,007,163
     DB 128,254,128,007,163,128,029,129,007,163,128,064,129,010,152
 EXTRA_WALKING_TUNE_P1:
-	DB 064,107,048,007,099,064,143,048,007,099,064,143,048,007,099,064,143,048,007,099,064
+    DB 064,107,048,007,099,064,143,048,007,099,064,143,048,007,099,064,143,048,007,099,064
     DB 107,048,007,099,064,143,048,007,099,064,143,048,007,099,064,143,048,007,099,064,127
     DB 048,007,099,064,160,048,007,099,064,160,048,007,099,064,160,048,007,099,064,127,048
     DB 007,099,064,160,048,007,099,064,160,048,007,099,064,160,048,007,099,064,143,048,007
@@ -9316,7 +9637,7 @@ LOC_D326:
     CALL    SUB_B8F7
     PUSH    IY
     CALL    SUB_CA24
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_D333:
     BIT     7, (HL)
@@ -9328,7 +9649,7 @@ LOC_D333:
     JP      LOC_B8AB
 LOC_D345:
     CALL    SUB_CA2D
-    LD      HL, $726E
+    LD      HL, GAMECONTROL
     SET     7, (HL)
 LOC_D34D:
     BIT     7, (HL)
@@ -9414,11 +9735,6 @@ LOC_D40B:
     JP      NZ, LOC_D405
     CALL    PLAY_DIAMOND_SOUND
     JP      LOC_D405
-
-
-
-
-
 
 
 
